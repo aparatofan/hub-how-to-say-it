@@ -1,0 +1,208 @@
+[
+  {
+    "type": "choice",
+    "tag": "EX 1",
+    "title": "What is it doing?",
+    "instruction": "Read each mini-dialogue. What is the function of the bold expression? Choose a, b or c.",
+    "items": [
+      {
+        "lines": [
+          "A: Hi, Anna! How’s the new flat?",
+          "B: **Can’t complain.** The neighbours are quiet and the bakery’s just round the corner."
+        ],
+        "options": ["saying things are going well", "complaining politely", "changing the subject"],
+        "answer": 0
+      },
+      {
+        "lines": [
+          "A: **Lovely day, isn’t it?**",
+          "B: Beautiful. I nearly asked them to hold the meeting in the garden."
+        ],
+        "options": ["asking for someone’s opinion", "making a complaint", "starting a chat with a stranger"],
+        "answer": 2
+      },
+      {
+        "lines": [
+          "A: Kat! You’ve vanished — we haven’t seen you at Friday lunch for weeks.",
+          "B: I know, sorry — **I’ve been really busy** with the Berlin launch. Next Friday, I promise."
+        ],
+        "options": ["signalling you have to go", "explaining why you’ve been out of touch", "turning down an invitation"],
+        "answer": 1
+      },
+      {
+        "lines": [
+          "A: **It’s getting late**, and I’ve still got the dog to walk before bed.",
+          "B: Already? I’ll get your coat, Tom."
+        ],
+        "options": ["apologising for being late", "hinting that it’s time to leave", "asking what time it is"],
+        "answer": 1
+      },
+      {
+        "lines": [
+          "A: So the samples will be with you by Tuesday.",
+          "B: Perfect. **Give my regards to** Mr Hughes — I haven’t seen him since the trade fair."
+        ],
+        "options": ["asking someone to pass on greetings", "greeting someone you know", "thanking someone"],
+        "answer": 0
+      },
+      {
+        "lines": [
+          "A: That’s me done for the week, Pete. **Any plans for the weekend?**",
+          "B: Nothing big. My sister’s visiting, so a long walk and far too much cake."
+        ],
+        "options": ["inviting someone out", "arranging a meeting", "making friendly small talk"],
+        "answer": 2
+      },
+      {
+        "lines": [
+          "A: That was the best pasta I’ve had all year, Sven.",
+          "B: **Let’s do this again soon.** Same place, but next time I’m ordering dessert."
+        ],
+        "options": ["asking someone to repeat something", "suggesting you meet again", "saying sorry for leaving"],
+        "answer": 1
+      }
+    ]
+  },
+  {
+    "type": "gapfill",
+    "tag": "EX 2",
+    "title": "Choose the right response",
+    "instruction": "Complete each dialogue with an expression from the box. There are TWO extra expressions you don’t need.",
+    "bank": [
+      "Anyway, I’d better get going",
+      "Are you here for the conference?",
+      "Good luck with everything!",
+      "Have a good one!",
+      "Is this seat taken?",
+      "Let’s stay in touch",
+      "Safe travels!",
+      "Same as always",
+      "Speak soon!"
+    ],
+    "dialogues": [
+      {
+        "title": "Dialogue 1 — Hotel breakfast, before a conference",
+        "lines": [
+          "A: Excuse me — {1} Every other table’s full.",
+          "B: No, go ahead. Plenty of room.",
+          "A: Thanks. {2} I saw the lanyards in reception.",
+          "B: I am — I’m speaking on Thursday, actually. Supply chains. I’m Sven, by the way.",
+          "A: Alita. I’m in logistics too, so I’ll definitely be there.",
+          "B: Great. Maybe we could talk afterwards — we’re looking for a partner in Poland.",
+          "A: I’d like that. {3} — the first session starts at nine and I haven’t even got my badge yet.",
+          "B: Here’s my card. I’ll call you on Monday, once we’re both back in the office.",
+          "A: Perfect. {4}"
+        ]
+      },
+      {
+        "title": "Dialogue 2 — The queue at the local bakery",
+        "lines": [
+          "A: Pete! I haven’t seen you since the summer. How’s everything?",
+          "B: Oh, {5} — work, football with the kids on Saturdays, and trying to keep the garden alive. And you?",
+          "A: Big changes, actually. I start a new job on Monday, and we’re moving flats the same week.",
+          "B: Both in one week? {6}",
+          "A: Thanks. Don’t worry — it’s only two streets away, so you won’t get rid of me that easily.",
+          "B: Right, that’s my bread. We’ve got friends coming for lunch.",
+          "A: {7} And enjoy the sunshine, Pete!"
+        ]
+      }
+    ],
+    "answers": {
+      "1": "Is this seat taken?",
+      "2": "Are you here for the conference?",
+      "3": "Anyway, I’d better get going",
+      "4": "Speak soon!",
+      "5": "Same as always",
+      "6": "Good luck with everything!",
+      "7": "Have a good one!"
+    }
+  },
+  {
+    "type": "upgrade",
+    "tag": "EX 3",
+    "title": "Upgrade the reply",
+    "instruction": "B’s reply works, but the opener in bold is the basic, safe choice. Replace only the bold part with a blue expression from the mind map that fits the situation better, and keep the rest of the sentence. The hint tells you what the situation needs.",
+    "items": [
+      {
+        "lines": [
+          "A: Anna? I don’t believe it! It must be two years since your leaving party!",
+          "B: **How are things?** Are you still at the bank, or did you finally open that café?"
+        ],
+        "hint": "it’s been ages — ask about the whole time since",
+        "suggested": ["How have you been?"]
+      },
+      {
+        "lines": [
+          "A: Morning, Pete! How’s the new office treating you?",
+          "B: **Not bad, thanks.** I was dreading the move, but I’ve got a window seat and the coffee’s free."
+        ],
+        "hint": "things are better than you expected",
+        "suggested": ["Can’t complain."]
+      },
+      {
+        "lines": [
+          "A: Morning! You must be here for the budget meeting.",
+          "B: **Hello, my name is Alita.** I’ve just moved over from the Warsaw office."
+        ],
+        "hint": "introduce yourself to someone new",
+        "suggested": ["I don’t think we’ve met. I’m Alita."]
+      },
+      {
+        "lines": [
+          "A: Hi, I’m Kat — I’ve just checked in. It’s my first time in Lisbon.",
+          "B: **Why are you here?** Work, or a bit of a holiday?"
+        ],
+        "hint": "ask politely why someone is visiting",
+        "suggested": ["What brings you here?"]
+      },
+      {
+        "lines": [
+          "A: …and that’s the plan for the new website. Any other questions, Tom?",
+          "B: **Sorry, I have to run.** I know you’ve got a busy afternoon."
+        ],
+        "hint": "leave, showing you respect their time",
+        "suggested": ["I won’t keep you any longer."]
+      },
+      {
+        "lines": [
+          "A: Right, I think that’s everything. We’ll send you the full proposal on Friday, Ms Grant.",
+          "B: **It was nice talking to you.** We’ll be in touch once we’ve read it."
+        ],
+        "hint": "formal — you’ve just met for the first time",
+        "suggested": ["It was a pleasure meeting you."]
+      },
+      {
+        "lines": [
+          "A: Right, this is my floor. Welcome to the building, Tom!",
+          "B: **See you soon.** I’m sure we’ll bump into each other in the lift."
+        ],
+        "hint": "casual — no plans, you’ll just run into each other",
+        "suggested": ["See you around."]
+      },
+      {
+        "lines": [
+          "A: Tom, we’ve been sitting here for three hours — they’re stacking the chairs!",
+          "B: **It was nice talking to you.** Same café next month?"
+        ],
+        "hint": "casual — an old friend you hadn’t seen for a while",
+        "suggested": ["Great catching up!"]
+      }
+    ]
+  },
+  {
+    "type": "speaking",
+    "tag": "EX 4",
+    "title": "Act it out",
+    "instruction": "Work with a partner. Choose a situation and act out a short conversation from the first hello to the final goodbye. Use at least four expressions from the mind map, including at least two blue ones.",
+    "lead": "You are:",
+    "prompts": [
+      "bumping into a former classmate by chance — in the street, in a shop or on the bus",
+      "waiting in a queue — making small talk with a stranger at the bank, the post office or a supermarket checkout",
+      "arriving at a family gathering — greeting relatives you haven’t seen for a while",
+      "running into a former colleague in a client’s building",
+      "welcoming a visitor from another office — walking them from reception to the meeting room",
+      "chatting to colleagues by the coffee machine on a Monday morning",
+      "finishing a meeting with a new client"
+    ]
+  }
+]
