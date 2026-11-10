@@ -10,58 +10,94 @@
           "A: Hi, Anna! How’s the new flat?",
           "B: **Can’t complain.** The neighbours are quiet and the bakery’s just round the corner."
         ],
-        "options": ["saying things are going well", "complaining politely", "changing the subject"],
-        "answer": 0
+        "options": [
+          "saying things are going well",
+          "complaining politely",
+          "changing the subject"
+        ],
+        "answer": 0,
+        "note": "_Complain_ is in the phrase, but it means things are fine. B lists only good things."
       },
       {
         "lines": [
           "A: **Lovely day, isn’t it?**",
           "B: Beautiful. I nearly asked them to hold the meeting in the garden."
         ],
-        "options": ["asking for someone’s opinion", "making a complaint", "starting a chat with a stranger"],
-        "answer": 2
+        "options": [
+          "asking for someone’s opinion",
+          "making a complaint",
+          "starting a chat with a stranger"
+        ],
+        "answer": 2,
+        "note": "The question tag looks like a request for an opinion. Here it is just a way to start talking to a stranger in reception."
       },
       {
         "lines": [
           "A: Kat! You’ve vanished — we haven’t seen you at Friday lunch for weeks.",
           "B: I know, sorry — **I’ve been really busy** with the Berlin launch. Next Friday, I promise."
         ],
-        "options": ["signalling you have to go", "explaining why you’ve been out of touch", "turning down an invitation"],
-        "answer": 1
+        "options": [
+          "signalling you have to go",
+          "explaining why you’ve been out of touch",
+          "turning down an invitation"
+        ],
+        "answer": 1,
+        "note": "_Busy_ suggests a quick exit, but Kat isn’t leaving. She explains her absence and promises to come next Friday."
       },
       {
         "lines": [
           "A: **It’s getting late**, and I’ve still got the dog to walk before bed.",
           "B: Already? I’ll get your coat, Tom."
         ],
-        "options": ["apologising for being late", "hinting that it’s time to leave", "asking what time it is"],
-        "answer": 1
+        "options": [
+          "apologising for being late",
+          "hinting that it’s time to leave",
+          "asking what time it is"
+        ],
+        "answer": 1,
+        "note": "_Late_ suggests an apology, but Tom is already there. B fetches his coat, so it’s a hint that he’s going."
       },
       {
         "lines": [
           "A: So the samples will be with you by Tuesday.",
           "B: Perfect. **Give my regards to** Mr Hughes — I haven’t seen him since the trade fair."
         ],
-        "options": ["asking someone to pass on greetings", "greeting someone you know", "thanking someone"],
-        "answer": 0
+        "options": [
+          "asking someone to pass on greetings",
+          "greeting someone you know",
+          "thanking someone"
+        ],
+        "answer": 0,
+        "note": "The _regards_ are greetings, but B isn’t greeting A. B asks A to pass them on to Mr Hughes."
       },
       {
         "lines": [
           "A: That’s me done for the week, Pete. **Any plans for the weekend?**",
           "B: Nothing big. My sister’s visiting, so a long walk and far too much cake."
         ],
-        "options": ["inviting someone out", "arranging a meeting", "making friendly small talk"],
-        "answer": 2
+        "options": [
+          "inviting someone out",
+          "arranging a meeting",
+          "making friendly small talk"
+        ],
+        "answer": 2,
+        "note": "A question about someone’s free time can lead to an invitation, but A is leaving for the week and doesn’t invite Pete."
       },
       {
         "lines": [
           "A: That was the best pasta I’ve had all year, Sven.",
           "B: **Let’s do this again soon.** Same place, but next time I’m ordering dessert."
         ],
-        "options": ["asking someone to repeat something", "suggesting you meet again", "saying sorry for leaving"],
-        "answer": 1
+        "options": [
+          "asking someone to repeat something",
+          "suggesting you meet again",
+          "saying sorry for leaving"
+        ],
+        "answer": 1,
+        "note": "_Do this again_ isn’t a request to repeat something. It comes at the end of a meal and is followed by plans for next time."
       }
-    ]
+    ],
+    "note_label": "Why the tempting option is wrong"
   },
   {
     "type": "gapfill",
@@ -115,7 +151,24 @@
       "5": "Same as always",
       "6": "Good luck with everything!",
       "7": "Have a good one!"
-    }
+    },
+    "near_misses": [
+      {
+        "expression": "Let’s stay in touch.",
+        "tempting_for": "Gap 6",
+        "why": "Anna is moving only two streets away, so they’ll keep running into each other."
+      },
+      {
+        "expression": "Safe travels!",
+        "tempting_for": "Gap 7",
+        "why": "Nobody is travelling. Pete is going home to cook for friends."
+      },
+      {
+        "expression": "Speak soon! / Have a good one!",
+        "tempting_for": "Gaps 4 and 7",
+        "why": "Gap 4 follows a plan to call on Monday, so it needs _Speak soon!_ Gap 7 has no plan to be in touch and adds _enjoy the sunshine_, so it needs _Have a good one!_"
+      }
+    ]
   },
   {
     "type": "upgrade",
@@ -129,7 +182,10 @@
           "B: **How are things?** Are you still at the bank, or did you finally open that café?"
         ],
         "hint": "it’s been ages — ask about the whole time since",
-        "suggested": ["How have you been?"]
+        "suggested": [
+          "How have you been?"
+        ],
+        "note": "It’s been two years, so ask about the whole time since you last met."
       },
       {
         "lines": [
@@ -137,7 +193,10 @@
           "B: **Not bad, thanks.** I was dreading the move, but I’ve got a window seat and the coffee’s free."
         ],
         "hint": "things are better than you expected",
-        "suggested": ["Can’t complain."]
+        "suggested": [
+          "Pretty good, actually."
+        ],
+        "note": "_Actually_ signals that things went better than expected."
       },
       {
         "lines": [
@@ -145,7 +204,10 @@
           "B: **Hello, my name is Alita.** I’ve just moved over from the Warsaw office."
         ],
         "hint": "introduce yourself to someone new",
-        "suggested": ["I don’t think we’ve met. I’m Alita."]
+        "suggested": [
+          "I don’t think we’ve met. I’m Alita."
+        ],
+        "note": "Keep the name: _I don’t think we’ve met. I’m Alita._"
       },
       {
         "lines": [
@@ -153,7 +215,10 @@
           "B: **Why are you here?** Work, or a bit of a holiday?"
         ],
         "hint": "ask politely why someone is visiting",
-        "suggested": ["What brings you here?"]
+        "suggested": [
+          "What brings you here?"
+        ],
+        "note": "_Why are you here?_ copies the Polish _Dlaczego tu jesteś?_ and sounds like an interrogation."
       },
       {
         "lines": [
@@ -161,7 +226,10 @@
           "B: **Sorry, I have to run.** I know you’ve got a busy afternoon."
         ],
         "hint": "leave, showing you respect their time",
-        "suggested": ["I won’t keep you any longer."]
+        "suggested": [
+          "I won’t keep you any longer."
+        ],
+        "note": "The focus moves from _I’m in a hurry_ to _I know you’re busy_."
       },
       {
         "lines": [
@@ -169,7 +237,10 @@
           "B: **It was nice talking to you.** We’ll be in touch once we’ve read it."
         ],
         "hint": "formal — you’ve just met for the first time",
-        "suggested": ["It was a pleasure meeting you."]
+        "suggested": [
+          "It was a pleasure meeting you."
+        ],
+        "note": "Formal, first meeting with a client. Compare item 8."
       },
       {
         "lines": [
@@ -177,7 +248,10 @@
           "B: **See you soon.** I’m sure we’ll bump into each other in the lift."
         ],
         "hint": "casual — no plans, you’ll just run into each other",
-        "suggested": ["See you around."]
+        "suggested": [
+          "See you around."
+        ],
+        "note": "No fixed plan. They work in the same building and will run into each other."
       },
       {
         "lines": [
@@ -185,9 +259,13 @@
           "B: **It was nice talking to you.** Same café next month?"
         ],
         "hint": "casual — an old friend you hadn’t seen for a while",
-        "suggested": ["Great catching up!"]
+        "suggested": [
+          "Great catching up!"
+        ],
+        "note": "Same opener as item 6, but an old friend. The orange phrase sounds stiff here, as if they had only just met."
       }
-    ]
+    ],
+    "key_intro": "Suggested answers. Accept any blue expression from the mind map that fits the hint and the rest of B’s sentence."
   },
   {
     "type": "speaking",
@@ -203,6 +281,13 @@
       "welcoming a visitor from another office — walking them from reception to the meeting room",
       "chatting to colleagues by the coffee machine on a Monday morning",
       "finishing a meeting with a new client"
+    ],
+    "key_intro": "Open task, no key. While pairs speak, check that each conversation:",
+    "checklist": [
+      "goes from the first hello to the final goodbye, so it uses both halves of the chapter;",
+      "uses at least four expressions from the mind map;",
+      "includes at least two blue expressions;",
+      "fits the register of the situation: relaxed with friends and neighbours, more formal with a new client or a visitor."
     ]
   }
 ]

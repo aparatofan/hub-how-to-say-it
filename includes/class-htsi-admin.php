@@ -323,6 +323,13 @@ class HTSI_Admin {
 		if ( $hub ) {
 			$link = $hub . '#/' . $v . '/' . $c;
 			printf( '<p><strong>Link for the QR code on this map:</strong> <code>%s</code></p>', esc_html( $link ) );
+			printf(
+				'<div id="htsi-qr" data-link="%s" data-name="%s" style="display:flex;gap:16px;align-items:flex-end;margin:0 0 16px"><p style="margin:0"><button type="button" class="button" data-qr="png">Download PNG</button> <button type="button" class="button" data-qr="svg">Download SVG</button><br><span class="description">PNG is about 1000 px wide. SVG stays sharp at any print size.</span></p></div>',
+				esc_attr( $link ),
+				esc_attr( sprintf( 'how-to-say-it-qr-v%d-ch%02d', $v, $c ) )
+			);
+			wp_enqueue_script( 'htsi-qrcode', HTSI_URL . 'assets/vendor/qrcode.js', array(), '1.4.4', true );
+			wp_enqueue_script( 'htsi-admin-qr', HTSI_URL . 'assets/admin-qr.js', array( 'htsi-qrcode' ), HTSI_VERSION, true );
 		} else {
 			printf( '<p><strong>Link for the QR code:</strong> choose the HUB page in <a href="%s">Settings</a> first.</p>', esc_url( self::url( 'settings' ) ) );
 		}
@@ -353,7 +360,12 @@ class HTSI_Admin {
 		$json = $ch['exercises'] ? wp_json_encode( $ch['exercises'], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES ) : '';
 		echo '<tr><th><label for="htsi-ex">Exercises and key</label></th><td>';
 		printf( '<textarea id="htsi-ex" name="exercises" rows="24" class="large-text code" spellcheck="false">%s</textarea>', esc_textarea( (string) $json ) );
-		echo '<p class="description">Exercises in JSON form. The key is built from the answers inside, so there is nothing else to type. The format is described in <code>docs/exercise-format.md</code> in the plugin folder. Leave empty while the exercises are not ready.</p></td></tr>';
+		echo '<p class="description">Exercises in JSON form. The key is built from the answers inside, so there is nothing else to type. The format is described in <code>docs/exercise-format.md</code> in the plugin folder. Leave empty while the exercises are not ready.</p>';
+		$seed = require HTSI_DIR . 'data/seed.php';
+		if ( ! empty( $seed[ $v ][ $c ]['exercises'] ) ) {
+			echo '<p><label><input type="checkbox" name="use_builtin" value="1"> Replace these exercises with the version that came with the plugin (use this after a plugin update that changes the exercises or the key).</label></p>';
+		}
+		echo '</td></tr>';
 		echo '</table>';
 		submit_button( 'Save chapter' );
 		echo '</form>';
@@ -382,7 +394,10 @@ class HTSI_Admin {
 		$exercises = $old ? $old['exercises'] : array();
 		$raw       = isset( $_POST['exercises'] ) ? trim( (string) wp_unslash( $_POST['exercises'] ) ) : '';
 		$err       = '';
-		if ( '' === $raw ) {
+		$seed      = require HTSI_DIR . 'data/seed.php';
+		if ( ! empty( $_POST['use_builtin'] ) && ! empty( $seed[ $v ][ $c ]['exercises'] ) ) {
+			$exercises = $seed[ $v ][ $c ]['exercises'];
+		} elseif ( '' === $raw ) {
 			$exercises = array();
 		} else {
 			$parsed = json_decode( $raw, true );

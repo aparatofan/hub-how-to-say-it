@@ -28,7 +28,14 @@ A WordPress plugin for The Blue Tree. Readers scan the QR code on a printed mind
 - **Chapters** — per chapter: title, Mindomo link, one row per branch with its TBT Fill link, and the exercises. The page also shows the link to put in that map's QR code.
 - **Settings** — HUB page, full-screen layout, shop links.
 
+## Deploying
+
+Every push to `main` uploads the plugin to the live site over FTPS (`.github/workflows/deploy.yml`, the same method as TBT Fill). It needs the repository secrets `FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD` and `FTP_SERVER_DIR`. It can also be run by hand from the Actions tab, with a dry-run option.
+
 ## QR links
+
+The Chapters admin page shows the QR code for each chapter and lets you download it as PNG or SVG.
+
 
 `https://thebluetree.pl/<hub-page>/#/<volume>/<chapter>` — for example `#/1/1`. After sign-in the reader lands on that chapter. Without the `#/…` part they land on the volume list.
 
@@ -47,6 +54,7 @@ includes/class-htsi-api.php      REST API (htsi/v1)
 includes/class-htsi-frontend.php shortcode + full-screen template
 includes/class-htsi-admin.php    admin screens
 assets/hub.css, assets/hub.js    the HUB itself (no build step)
+assets/admin-qr.js, assets/vendor  QR code on the Chapters admin page (qrcode-generator, MIT)
 assets/fonts                     Roboto Slab + Roboto Flex, self-hosted
 data/seed.php                    starting content for all 30 chapters
 ```

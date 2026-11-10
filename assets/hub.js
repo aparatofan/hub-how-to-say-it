@@ -15,6 +15,7 @@
     chapters: {},     // "v-c" -> chapter data, or {error: '...'}
     work: {},         // "v-c-i" -> answers for one exercise (kept only while the page is open)
     mapSent: {},      // "v-c" -> email address, or {error}
+    open: {},         // "v-c" -> which chapter sections are open (all closed at first)
     busy: false
   };
 
@@ -30,6 +31,20 @@
   function rich(s) {
     var out = esc(s).replace(/\*\*(.+?)\*\*/g, '<strong class="htsi-hl">$1</strong>');
     return out.replace(/^([A-Z]):\s/, '<span class="htsi-sp">$1:</span> ');
+  }
+
+  // Key notes: _text_ becomes italics (for a quoted word or phrase).
+  function note(s) {
+    return esc(s).replace(/(^|[\s(])_(.+?)_(?=[\s.,;:!?)]|$)/g, '$1<em>$2</em>');
+  }
+
+  // The first **highlighted** expression in a list of dialogue lines.
+  function bold(lines) {
+    for (var i = 0; i < (lines || []).length; i++) {
+      var m = /\*\*(.+?)\*\*/.exec(String(lines[i]));
+      if (m) { return m[1]; }
+    }
+    return '';
   }
 
   function safeUrl(u) {
@@ -63,6 +78,7 @@
     map: '<svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#102564" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 9V4M12 20v-5M9.4 13.5L5 16M14.6 10.5L19 8M9.4 10.5L5 8M14.6 13.5L19 16"/></svg>',
     screen: '<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>',
     lock: '<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
+    down: '<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>',
     key: '<svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M11 12l8-8M16 7l3 3M14 9l2 2"/></svg>'
   };
 
@@ -71,13 +87,13 @@
   // #/            home
   // #/1/1         chapter
   // #/1/1/ex/0    exercise
-  // #/1/1/key     key
+  // #/1/1/key/0   key to one exercise
   function route() {
     var p = (location.hash || '').replace(/^#\/?/, '').split('/');
     var v = parseInt(p[0], 10), c = parseInt(p[1], 10);
     if (!(v >= 1 && v <= 3 && c >= 1 && c <= 10)) { return { name: 'home' }; }
     if (p[2] === 'ex' && /^\d+$/.test(p[3] || '')) { return { name: 'ex', v: v, c: c, i: parseInt(p[3], 10) }; }
-    if (p[2] === 'key') { return { name: 'key', v: v, c: c }; }
+    if (p[2] === 'key') { return { name: 'key', v: v, c: c, i: /^\d+$/.test(p[3] || '') ? parseInt(p[3], 10) : 0 }; }
     return { name: 'chapter', v: v, c: c };
   }
 
@@ -102,7 +118,7 @@
   function applyState(data) {
     S.reader = data.reader || null;
     S.volumes = data.volumes || [];
-    if (!S.reader) { S.chapters = {}; S.work = {}; S.mapSent = {}; }
+    if (!S.reader) { S.chapters = {}; S.work = {}; S.mapSent = {}; S.open = {}; }
   }
 
   function loadChapter(v, c) {
@@ -204,8 +220,9 @@
     }
 
     return '<div class="htsi-screen htsi-home">' +
+      '<img class="htsi-home-logo" src="' + esc(C.logoColour) + '" alt="The Blue Tree" width="150" height="130">' +
       '<div class="htsi-home-head">' +
-        '<div class="htsi-home-brand"><img src="' + esc(C.logoColour) + '" alt="The Blue Tree" width="46" height="40"><div class="htsi-eyebrow">How to Say It in English</div></div>' +
+        '<div class="htsi-home-brand"><div class="htsi-eyebrow">How to Say It in English</div></div>' +
         '<h1>Welcome' + name + '.</h1>' +
         '<p>Choose a volume, then a chapter.</p>' +
       '</div>' +
@@ -223,16 +240,30 @@
 
   function hero(r, title, backHref, backLabel) {
     return '<div class="htsi-hero">' +
+      '<img class="htsi-hero-logo" src="' + esc(C.logoWhite) + '" alt="" width="150" height="130">' +
       '<a class="htsi-back" href="' + backHref + '">' + ICON.left + esc(backLabel) + '</a>' +
       '<div class="htsi-eyebrow">Volume ' + r.v + ' · Chapter ' + r.c + '</div>' +
       '<h1>' + esc(title) + '</h1><div class="htsi-rule"></div></div>';
   }
 
+  function section(k, n, id, title, sub, inner) {
+    var open = !!(S.open[k] && S.open[k][id]);
+    return '<div class="htsi-acc' + (open ? ' is-open' : '') + '">' +
+      '<button type="button" class="htsi-acc-head" data-act="toggle" data-s="' + id + '" aria-expanded="' + open + '" aria-controls="htsi-acc-' + id + '">' +
+        '<span class="htsi-acc-n">' + n + '</span>' +
+        '<span class="htsi-acc-text"><span class="htsi-acc-title">' + esc(title) + '</span><span class="htsi-acc-sub">' + esc(sub) + '</span></span>' +
+        '<span class="htsi-acc-chev">' + ICON.down + '</span></button>' +
+      (open ? '<div class="htsi-acc-panel" id="htsi-acc-' + id + '">' + inner + '</div>' : '') +
+    '</div>';
+  }
+
   function viewChapter(r, ch) {
     var k = r.v + '-' + r.c;
     var base = '#/' + r.v + '/' + r.c;
-    var html = '<div class="htsi-screen">' + hero(r, ch.title, '#/', 'All chapters') + '<div class="htsi-body">';
+    var hasEx = !!(ch.exercises && ch.exercises.length);
+    var inner;
 
+    // 1. mind map
     var map = safeUrl(ch.map_url);
     if (map) {
       var sent = S.mapSent[k];
@@ -243,41 +274,45 @@
         send = (sent && sent.error ? '<div class="htsi-error" role="alert">' + esc(sent.error) + '</div>' : '') +
           '<button type="button" class="htsi-btn-onnavy" data-act="sendmap"' + (S.busy ? ' disabled' : '') + '>Email me the link</button>';
       }
-      html += '<div class="htsi-map">' +
+      inner = '<div class="htsi-map">' +
         '<a class="htsi-map-open" href="' + esc(map) + '" target="_blank" rel="noopener"><span class="htsi-map-icon">' + ICON.map + '</span>' +
-          '<span style="flex:1"><span class="htsi-map-title">Open the mind map</span><span class="htsi-map-sub">All the phrases, with audio and examples</span></span>' + ICON.out + '</a>' +
+          '<span style="flex:1"><span class="htsi-map-title">Open the mind map</span><span class="htsi-map-sub">It opens in a new tab</span></span>' + ICON.out + '</a>' +
         '<div class="htsi-map-line"></div>' +
         '<div class="htsi-map-note">' + ICON.screen + '<p>The map is big. It works best on a computer or a tablet. Send the link to your email and open it there.</p></div>' +
         send +
       '</div>';
+    } else {
+      inner = '<div class="htsi-empty">The mind map for this chapter is not ready yet. Please come back soon.</div>';
     }
+    var html = section(k, 1, 'map', 'Access the mind map', 'All the phrases, with audio and examples', inner);
 
-    html += '<div class="htsi-sec"><div class="htsi-sec-head"><h2>Practise branch by branch</h2><p>TBT Fill: build each phrase before the time runs out.</p></div>';
+    // 2. Fill games
     if (ch.branches && ch.branches.length) {
-      html += '<div class="htsi-list">' + ch.branches.map(function (b, i) {
+      inner = '<div class="htsi-list">' + ch.branches.map(function (b, i) {
         var url = safeUrl(b.fill_url);
-        var inner = '<span class="htsi-dot">' + (i + 1) + '</span><span class="htsi-row-main"><span class="htsi-row-title">' + esc(b.title) + '</span></span>';
+        var row = '<span class="htsi-dot">' + (i + 1) + '</span><span class="htsi-row-main"><span class="htsi-row-title">' + esc(b.title) + '</span></span>';
         return url
-          ? '<a class="htsi-row" href="' + esc(url) + '" target="_blank" rel="noopener">' + inner + '<span class="htsi-row-end">Play</span></a>'
-          : '<div class="htsi-row is-off">' + inner + '<span class="htsi-row-end">Soon</span></div>';
+          ? '<a class="htsi-row" href="' + esc(url) + '" target="_blank" rel="noopener">' + row + '<span class="htsi-row-end">Play</span></a>'
+          : '<div class="htsi-row is-off">' + row + '<span class="htsi-row-end">Soon</span></div>';
       }).join('') + '</div>';
     } else {
-      html += '<div class="htsi-empty">The games for this chapter are not ready yet. Please come back soon.</div>';
+      inner = '<div class="htsi-empty">The games for this chapter are not ready yet. Please come back soon.</div>';
     }
-    html += '</div>';
+    html += section(k, 2, 'games', 'Play Fill', 'Build each phrase before your time runs out', inner);
 
-    html += '<div class="htsi-sec"><div class="htsi-sec-head"><h2>Revision exercises</h2><p>The same exercises as on the back of your map.</p></div>';
-    if (ch.exercises && ch.exercises.length) {
-      html += '<div class="htsi-list">' + ch.exercises.map(function (e, i) {
-        return '<a class="htsi-row" href="' + base + '/ex/' + i + '"><span class="htsi-tag">' + esc(e.tag || ('EX ' + (i + 1))) + '</span>' +
+    // 3. exercises, 4. key
+    function exRows(path) {
+      return '<div class="htsi-list">' + ch.exercises.map(function (e, i) {
+        return '<a class="htsi-row" href="' + base + path + i + '"><span class="htsi-tag">' + esc(e.tag || ('EX ' + (i + 1))) + '</span>' +
           '<span class="htsi-row-main"><span class="htsi-row-title">' + esc(e.title) + '</span></span><span style="color:var(--blue)">' + ICON.right + '</span></a>';
-      }).join('') + '</div>' +
-      '<a class="htsi-keybtn" href="' + base + '/key">' + ICON.key + '<span><strong>Key to exercises</strong><span>Check your answers here — on paper or on your phone</span></span></a>';
-    } else {
-      html += '<div class="htsi-empty">The exercises and the key for this chapter are not ready yet. Please come back soon.</div>';
+      }).join('') + '</div>';
     }
-    html += '</div></div></div>';
-    return html;
+    html += section(k, 3, 'ex', 'Interactive exercises', 'The same exercises as on the back of your map',
+      hasEx ? exRows('/ex/') : '<div class="htsi-empty">The exercises for this chapter are not ready yet. Please come back soon.</div>');
+    html += section(k, 4, 'key', 'Key to exercises', 'Answers and notes, for learners and teachers',
+      hasEx ? exRows('/key/') : '<div class="htsi-empty">The key for this chapter is not ready yet. Please come back soon.</div>');
+
+    return '<div class="htsi-screen">' + hero(r, ch.title, '#/', 'All chapters') + '<div class="htsi-main">' + html + '</div></div>';
   }
 
   /* ----- exercises ----- */
@@ -400,7 +435,7 @@
       (r.i > 0 ? '<a class="htsi-btn-ghost" href="' + base + '/ex/' + (r.i - 1) + '">' + ICON.left + ' Back</a>' : '') +
       (r.i < ch.exercises.length - 1
         ? '<a class="htsi-btn-ghost" href="' + base + '/ex/' + (r.i + 1) + '">Next ' + ICON.right + '</a>'
-        : '<a class="htsi-btn-ghost" href="' + base + '/key">Key</a>') +
+        : '<a class="htsi-btn-ghost" href="' + base + '/key/0">Key</a>') +
     '</div>';
 
     return '<div class="htsi-screen">' +
@@ -410,35 +445,88 @@
     '</div>';
   }
 
-  function viewKey(r, ch) {
-    var base = '#/' + r.v + '/' + r.c;
-    var cards = (ch.exercises || []).map(function (e, i) {
-      var inner = '';
-      if (e.type === 'choice') {
-        inner = '<ol class="htsi-keylist">' + (e.items || []).map(function (it, n) {
-          return '<li><span class="htsi-kn">' + (n + 1) + '</span><span><strong>' + 'abcdef'.charAt(it.answer) + ')</strong> ' + esc((it.options || [])[it.answer]) + '</span></li>';
-        }).join('') + '</ol>';
-      } else if (e.type === 'gapfill') {
-        var ans = e.answers || {}, usedMap = {};
-        inner = '<ol class="htsi-keylist">' + gapNumbers(e).map(function (n) {
-          usedMap[ans[n]] = true;
-          return '<li><span class="htsi-kn">' + esc(n) + '</span><span>' + esc(ans[n]) + '</span></li>';
-        }).join('') + '</ol>';
-        var extra = (e.bank || []).filter(function (b) { return !usedMap[b]; });
-        if (extra.length) { inner += '<p class="htsi-small htsi-muted">Not needed: ' + esc(extra.join(' · ')) + '</p>'; }
-      } else if (e.type === 'upgrade') {
-        inner = '<p class="htsi-small htsi-muted">Suggested answers. Other answers can be correct too.</p><ol class="htsi-keylist">' + (e.items || []).map(function (it, n) {
-          return '<li><span class="htsi-kn">' + (n + 1) + '</span><span>' + esc((it.suggested || []).join(' / ')) + '</span></li>';
-        }).join('') + '</ol>';
-      } else {
-        inner = '<p class="htsi-muted" style="font-size:14px">Speaking task. There is no key.</p>';
-      }
-      return '<div class="htsi-card"><div class="htsi-itemnum">' + esc(e.tag || ('EX ' + (i + 1))) + '</div><h2>' + esc(e.title) + '</h2>' + inner + '</div>';
+  function noteBox(label, text) {
+    return text ? '<div class="htsi-note"><span class="htsi-note-label">' + esc(label) + '</span><p>' + note(text) + '</p></div>' : '';
+  }
+
+  function keyChoice(e) {
+    var label = e.note_label || 'Note';
+    return (e.items || []).map(function (it, n) {
+      var exp = bold(it.lines);
+      return '<div class="htsi-card htsi-kcard"><div class="htsi-itemnum">' + (n + 1) + ' OF ' + e.items.length + '</div>' +
+        (exp ? '<div class="htsi-kexp">' + esc(exp) + '</div>' : '') +
+        '<div class="htsi-kans"><strong>' + 'abcdef'.charAt(it.answer) + ')</strong><span>' + esc((it.options || [])[it.answer]) + '</span></div>' +
+        noteBox(label, it.note) + '</div>';
     }).join('');
+  }
+
+  function keyGapfill(e) {
+    var ans = e.answers || {}, used = {};
+    var html = (e.dialogues || []).map(function (d) {
+      var rows = [];
+      (d.lines || []).forEach(function (l) {
+        String(l).replace(/\{(\d+)\}/g, function (m, n) {
+          used[ans[n]] = true;
+          rows.push('<li><span class="htsi-kn">' + esc(n) + '</span><span>' + esc(ans[n]) + '</span></li>');
+          return m;
+        });
+      });
+      return '<div class="htsi-card htsi-kcard"><h2>' + esc(d.title) + '</h2><ol class="htsi-keylist">' + rows.join('') + '</ol></div>';
+    }).join('');
+    var extra = (e.bank || []).filter(function (b) { return !used[b]; });
+    if (extra.length) {
+      html += '<div class="htsi-card htsi-kcard"><h2>Not needed</h2><p class="htsi-ktext">' + esc(extra.join(' · ')) + '</p></div>';
+    }
+    if (e.near_misses && e.near_misses.length) {
+      html += '<h2 class="htsi-khead">Near-misses</h2>' + e.near_misses.map(function (m) {
+        return '<div class="htsi-card htsi-kcard"><div class="htsi-kexp">' + esc(m.expression) + '</div>' +
+          (m.tempting_for ? '<div class="htsi-kmeta">Tempting for: <strong>' + esc(m.tempting_for) + '</strong></div>' : '') +
+          noteBox('What rules it out', m.why) + '</div>';
+      }).join('');
+    }
+    return html;
+  }
+
+  function keyUpgrade(e) {
+    return (e.items || []).map(function (it, n) {
+      var exp = bold(it.lines);
+      return '<div class="htsi-card htsi-kcard"><div class="htsi-itemnum">' + (n + 1) + ' OF ' + e.items.length + '</div>' +
+        (exp ? '<div class="htsi-kold">' + esc(exp) + '</div>' : '') +
+        '<div class="htsi-kexp">' + esc((it.suggested || []).join(' / ')) + '</div>' +
+        noteBox(e.note_label || 'Note', it.note) + '</div>';
+    }).join('');
+  }
+
+  function keySpeaking(e) {
+    if (!e.checklist || !e.checklist.length) { return ''; }
+    return '<div class="htsi-card htsi-kcard"><ul class="htsi-checklist">' + e.checklist.map(function (c) {
+      return '<li><span class="htsi-box" aria-hidden="true"></span><span>' + note(c) + '</span></li>';
+    }).join('') + '</ul></div>';
+  }
+
+  function viewKey(r, ch) {
+    var list = ch.exercises || [];
+    var e = list[r.i];
+    var base = '#/' + r.v + '/' + r.c;
+    if (!e) { return viewChapter(r, ch); }
+    var body, intro = e.key_intro || '';
+    if (e.type === 'choice') { body = keyChoice(e); }
+    else if (e.type === 'gapfill') { body = keyGapfill(e); }
+    else if (e.type === 'upgrade') { body = keyUpgrade(e); intro = intro || 'Suggested answers. Other answers can be correct too.'; }
+    else { body = keySpeaking(e); intro = intro || 'Speaking task. There is no key.'; }
+
+    var nav = '<div class="htsi-exnav">' +
+      (r.i > 0 ? '<a class="htsi-btn-ghost" href="' + base + '/key/' + (r.i - 1) + '">' + ICON.left + ' Back</a>' : '') +
+      (r.i < list.length - 1
+        ? '<a class="htsi-btn-ghost" href="' + base + '/key/' + (r.i + 1) + '">Next ' + ICON.right + '</a>'
+        : '<a class="htsi-btn-ghost" href="' + base + '">Chapter</a>') +
+    '</div>';
+
     return '<div class="htsi-screen">' +
       '<div class="htsi-exhead"><a class="htsi-back" href="' + base + '">' + ICON.left + esc(ch.title) + '</a>' +
-        '<div class="htsi-eyebrow">Key</div><h1>Key to exercises</h1><p>Check your answers.</p></div>' +
-      '<div class="htsi-exbody">' + cards + '</div></div>';
+        '<div class="htsi-eyebrow">Key · ' + esc(e.tag || ('EX ' + (r.i + 1))) + '</div><h1>' + esc(e.title) + '</h1>' +
+        (intro ? '<p class="htsi-kintro">' + note(intro) + '</p>' : '') + '</div>' +
+      '<div class="htsi-exbody">' + body + nav + '</div></div>';
   }
 
   /* ---------- render ---------- */
@@ -559,6 +647,15 @@
     if (act === 'vol') { S.vol = parseInt(t.getAttribute('data-n'), 10); if (r.name !== 'home') { lastScreen = ''; location.hash = '#/'; } else { render(); } return; }
     if (act === 'logout') {
       api('POST', '/logout').then(function (data) { applyState(data); location.hash = '#/'; render(); }, function () { render(); });
+      return;
+    }
+    if (act === 'toggle') {
+      var kk = r.v + '-' + r.c, id = t.getAttribute('data-s');
+      if (!S.open[kk]) { S.open[kk] = {}; }
+      S.open[kk][id] = !S.open[kk][id];
+      render();
+      var head = app.querySelector('[data-act="toggle"][data-s="' + id + '"]');
+      if (head) { head.focus({ preventScroll: true }); }
       return;
     }
     if (act === 'sendmap') {
