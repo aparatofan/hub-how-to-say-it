@@ -222,8 +222,9 @@
     return '<div class="htsi-screen htsi-home">' +
       '<img class="htsi-home-logo" src="' + esc(C.logoColour) + '" alt="The Blue Tree" width="150" height="130">' +
       '<div class="htsi-home-head">' +
-        '<div class="htsi-home-brand"><div class="htsi-eyebrow">How to Say It in English</div></div>' +
+        '<div class="htsi-eyebrow">How to Say It in English</div>' +
         '<h1>Welcome' + name + '.</h1>' +
+        '<div class="htsi-rule"></div>' +
         '<p>Choose a volume, then a chapter.</p>' +
       '</div>' +
       '<div class="htsi-vols">' + tabs + '</div>' +
