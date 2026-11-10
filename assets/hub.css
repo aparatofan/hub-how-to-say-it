@@ -128,9 +128,8 @@ body.htsi-body {
 .htsi-home { position: relative; overflow: hidden; padding: 20px 20px 40px; gap: 22px; }
 .htsi-home-logo { position: absolute; top: -14px; right: -30px; width: 150px; height: auto; pointer-events: none; }
 .htsi-home > :not(.htsi-home-logo) { position: relative; }
-.htsi-home-head { display: flex; flex-direction: column; gap: 8px; padding: 0 4px; }
-.htsi-home-brand { display: flex; align-items: center; min-height: 44px; margin: 34px 0 6px; padding-right: 110px; }
-.htsi-home-brand .htsi-eyebrow { color: var(--sage-text); }
+.htsi-home-head { display: flex; flex-direction: column; gap: 14px; margin-top: 112px; }
+.htsi-home-head .htsi-eyebrow { color: var(--sage-text); font-weight: 400; font-size: 13px; }
 #htsi-app .htsi-home-head h1 { font-size: 34px; font-weight: 700; line-height: 1.12; overflow-wrap: anywhere; }
 .htsi-home-head p { font-size: 17px; font-weight: 300; color: var(--muted); }
 .htsi-vols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
@@ -140,7 +139,7 @@ body.htsi-body {
 .htsi-vol[aria-pressed="true"] { background: var(--blue); border-color: var(--blue); color: #fff; }
 .htsi-vol[aria-pressed="true"] .htsi-vol-label { color: #fff; }
 .htsi-vol[aria-pressed="true"] .htsi-vol-n { font-weight: 700; }
-.htsi-volname { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 0 4px; }
+.htsi-volname { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
 #htsi-app .htsi-volname h2 { font-size: 22px; font-weight: 600; }
 .htsi-list { background: #fff; border-radius: 20px; border: 1px solid var(--line); overflow: hidden; display: flex; flex-direction: column; }
 .htsi-row { width: 100%; min-height: 68px; border: 0; border-bottom: 1px solid #E9EDF4; background: #fff; padding: 14px 16px; text-align: left; display: flex; align-items: center; gap: 14px; color: var(--ink); text-decoration: none; font-size: 17px; }
