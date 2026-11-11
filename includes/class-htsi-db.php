@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class HTSI_DB {
 
-	const SCHEMA_VERSION = '1';
+	const SCHEMA_VERSION = '2';
 
 	public static function readers() {
 		global $wpdb;
@@ -61,6 +61,7 @@ class HTSI_DB {
 			batch varchar(60) NOT NULL DEFAULT '',
 			reader_id bigint(20) unsigned DEFAULT NULL,
 			claimed_at datetime DEFAULT NULL,
+			given_at datetime DEFAULT NULL,
 			created_at datetime NOT NULL,
 			PRIMARY KEY  (id),
 			UNIQUE KEY code (code),
