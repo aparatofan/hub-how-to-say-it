@@ -23,7 +23,7 @@ A WordPress plugin for The Blue Tree. Readers scan the QR code on a printed mind
 
 ## Admin (HTSI HUB)
 
-- **Codes** — generate 1–500 codes for a volume, copy them, filter, export CSV. "Free code" detaches a code from a reader (for example after a typo in the email). Unused codes can be deleted.
+- **Codes** — generate 1–500 codes for a volume, copy them, filter, export CSV. Tick "Given out" when a code goes into a book or to a person, so you can see which codes are still spare; used codes are ticked automatically. "Free code" detaches a code from a reader (for example after a typo in the email). Unused codes can be deleted.
 - **Readers** — list and CSV export. "Delete" removes the reader and their sessions and frees their codes (use it for data-erasure requests).
 - **Chapters** — per chapter: title, Mindomo link, one row per branch with its TBT Fill link, and the exercises. The page also shows the link to put in that map's QR code.
 - **Settings** — HUB page, full-screen layout, shop links.

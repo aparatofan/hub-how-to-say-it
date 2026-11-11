@@ -17,6 +17,7 @@ class HTSI_Admin {
 		foreach ( array( 'generate', 'export_codes', 'code_action', 'export_readers', 'delete_reader', 'save_chapter', 'save_settings' ) as $a ) {
 			add_action( 'admin_post_htsi_' . $a, array( __CLASS__, 'do_' . $a ) );
 		}
+		add_action( 'wp_ajax_htsi_code_given', array( __CLASS__, 'ajax_code_given' ) );
 	}
 
 	public static function menu() {
@@ -103,11 +104,7 @@ class HTSI_Admin {
 		if ( $vol ) {
 			$where .= $wpdb->prepare( ' AND c.volume = %d', $vol );
 		}
-		if ( 'free' === $status ) {
-			$where .= ' AND c.reader_id IS NULL';
-		} elseif ( 'used' === $status ) {
-			$where .= ' AND c.reader_id IS NOT NULL';
-		}
+		$where .= self::status_where( $status );
 		$total = (int) $wpdb->get_var( 'SELECT COUNT(*) FROM ' . HTSI_DB::codes() . " c $where" );
 		$rows  = $wpdb->get_results(
 			'SELECT c.*, r.email FROM ' . HTSI_DB::codes() . ' c LEFT JOIN ' . HTSI_DB::readers() . " r ON r.id = c.reader_id $where ORDER BY c.id DESC " . $wpdb->prepare( 'LIMIT %d OFFSET %d', $per, ( $paged - 1 ) * $per )
@@ -120,7 +117,7 @@ class HTSI_Admin {
 			printf( '<option value="%d" %s>Volume %d</option>', $n, selected( $vol, $n, false ), $n );
 		}
 		echo '</select> <select name="status">';
-		foreach ( array( '' => 'Used and free', 'free' => 'Free', 'used' => 'Used' ) as $k => $label ) {
+		foreach ( array( '' => 'Used and free', 'free' => 'Free', 'used' => 'Used', 'spare' => 'Not given out yet', 'given' => 'Given out, not used yet' ) as $k => $label ) {
 			printf( '<option value="%s" %s>%s</option>', esc_attr( $k ), selected( $status, $k, false ), esc_html( $label ) );
 		}
 		echo '</select> ';
@@ -128,9 +125,9 @@ class HTSI_Admin {
 		printf( ' <a class="button" href="%s">Export CSV</a>', esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=htsi_export_codes&vol=' . $vol . '&status=' . $status ), 'htsi_export_codes' ) ) );
 		echo '</form>';
 
-		echo '<table class="widefat striped"><thead><tr><th>Code</th><th>Volume</th><th>Status</th><th>Reader</th><th>Used on</th><th>Note</th><th>Created</th><th></th></tr></thead><tbody>';
+		echo '<table class="widefat striped"><thead><tr><th>Code</th><th>Given out</th><th>Volume</th><th>Status</th><th>Reader</th><th>Used on</th><th>Note</th><th>Created</th><th></th></tr></thead><tbody>';
 		if ( ! $rows ) {
-			echo '<tr><td colspan="8">No codes yet.</td></tr>';
+			echo '<tr><td colspan="9">No codes here.</td></tr>';
 		}
 		foreach ( $rows as $r ) {
 			$act = '';
@@ -145,9 +142,20 @@ class HTSI_Admin {
 					esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=htsi_code_action&do=delete&id=' . (int) $r->id ), 'htsi_code_action' ) )
 				);
 			}
+			if ( $r->reader_id ) {
+				$tick = '<input type="checkbox" checked disabled title="A reader has used this code.">';
+			} else {
+				$tick = sprintf(
+					'<input type="checkbox" class="htsi-given" data-id="%d" aria-label="Given out: %s" %s>',
+					(int) $r->id,
+					esc_attr( $r->code ),
+					checked( ! empty( $r->given_at ), true, false )
+				);
+			}
 			printf(
-				'<tr><td><code>%s</code></td><td>%d</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>',
+				'<tr><td><code>%s</code></td><td>%s</td><td>%d</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>',
 				esc_html( $r->code ),
+				$tick, // phpcs:ignore WordPress.Security.EscapeOutput -- built from escaped parts above.
 				(int) $r->volume,
 				$r->reader_id ? 'Used' : 'Free',
 				esc_html( (string) $r->email ),
@@ -158,7 +166,52 @@ class HTSI_Admin {
 			);
 		}
 		echo '</tbody></table>';
+		echo '<p class="description">Tick <strong>Given out</strong> when you put a code in a book or send it to someone. The tick is saved at once. Used codes are ticked automatically.</p>';
 		self::pager( $total, $per, $paged, self::url( 'codes', array( 'vol' => $vol, 'status' => $status ) ) );
+		?>
+		<script>
+		( function () {
+			var nonce = <?php echo wp_json_encode( wp_create_nonce( 'htsi_code_given' ) ); ?>;
+			document.addEventListener( 'change', function ( e ) {
+				var box = e.target;
+				if ( ! box.classList || ! box.classList.contains( 'htsi-given' ) ) {
+					return;
+				}
+				var want = box.checked;
+				var body = new URLSearchParams( { action: 'htsi_code_given', _wpnonce: nonce, id: box.dataset.id, given: want ? '1' : '0' } );
+				box.disabled = true;
+				fetch( ajaxurl, { method: 'POST', credentials: 'same-origin', body: body } )
+					.then( function ( r ) { return r.json(); } )
+					.then( function ( j ) { if ( ! j || ! j.success ) { throw new Error(); } } )
+					.catch( function () {
+						box.checked = ! want;
+						window.alert( 'The tick was not saved. Reload the page and try again.' );
+					} )
+					.then( function () { box.disabled = false; } );
+			} );
+		} )();
+		</script>
+		<?php
+	}
+
+	/**
+	 * A code counts as given out when it is ticked by hand,
+	 * or when a reader has already used it.
+	 */
+	private static function status_where( $status ) {
+		if ( 'free' === $status ) {
+			return ' AND c.reader_id IS NULL';
+		}
+		if ( 'used' === $status ) {
+			return ' AND c.reader_id IS NOT NULL';
+		}
+		if ( 'given' === $status ) {
+			return ' AND c.reader_id IS NULL AND c.given_at IS NOT NULL';
+		}
+		if ( 'spare' === $status ) {
+			return ' AND c.reader_id IS NULL AND c.given_at IS NULL';
+		}
+		return '';
 	}
 
 	private static function pager( $total, $per, $paged, $base ) {
@@ -193,7 +246,8 @@ class HTSI_Admin {
 		$id = isset( $_GET['id'] ) ? (int) $_GET['id'] : 0;
 		$do = isset( $_GET['do'] ) ? sanitize_key( $_GET['do'] ) : '';
 		if ( 'release' === $do ) {
-			$wpdb->update( HTSI_DB::codes(), array( 'reader_id' => null, 'claimed_at' => null ), array( 'id' => $id ) );
+			// The code is still in somebody's hands, so it stays ticked as given out.
+			$wpdb->query( $wpdb->prepare( 'UPDATE ' . HTSI_DB::codes() . ' SET reader_id = NULL, claimed_at = NULL, given_at = COALESCE(given_at, %s) WHERE id = %d', HTSI_DB::now(), $id ) );
 			self::back( 'codes', array( 'msg' => rawurlencode( 'Code is free again.' ) ) );
 		}
 		if ( 'delete' === $do ) {
@@ -201,6 +255,20 @@ class HTSI_Admin {
 			self::back( 'codes', array( 'msg' => rawurlencode( 'Code deleted.' ) ) );
 		}
 		self::back( 'codes' );
+	}
+
+	public static function ajax_code_given() {
+		global $wpdb;
+		if ( ! current_user_can( self::CAP ) || ! check_ajax_referer( 'htsi_code_given', '_wpnonce', false ) ) {
+			wp_send_json_error( null, 403 );
+		}
+		$id    = isset( $_POST['id'] ) ? (int) $_POST['id'] : 0;
+		$given = ! empty( $_POST['given'] );
+		$done  = $wpdb->update( HTSI_DB::codes(), array( 'given_at' => $given ? HTSI_DB::now() : null ), array( 'id' => $id ) );
+		if ( false === $done ) {
+			wp_send_json_error( null, 500 );
+		}
+		wp_send_json_success();
 	}
 
 	private static function csv( $filename, array $head, array $rows ) {
@@ -233,13 +301,9 @@ class HTSI_Admin {
 		if ( $vol ) {
 			$where .= $wpdb->prepare( ' AND c.volume = %d', $vol );
 		}
-		if ( 'free' === $status ) {
-			$where .= ' AND c.reader_id IS NULL';
-		} elseif ( 'used' === $status ) {
-			$where .= ' AND c.reader_id IS NOT NULL';
-		}
-		$rows = $wpdb->get_results( 'SELECT c.code, c.volume, r.email, c.claimed_at, c.batch, c.created_at FROM ' . HTSI_DB::codes() . ' c LEFT JOIN ' . HTSI_DB::readers() . " r ON r.id = c.reader_id $where ORDER BY c.id", ARRAY_N );
-		self::csv( 'htsi-codes-' . gmdate( 'Y-m-d' ) . '.csv', array( 'code', 'volume', 'reader_email', 'used_on', 'note', 'created' ), $rows );
+		$where .= self::status_where( $status );
+		$rows = $wpdb->get_results( "SELECT c.code, c.volume, IF(c.reader_id IS NOT NULL OR c.given_at IS NOT NULL, 'yes', 'no'), r.email, c.claimed_at, c.batch, c.created_at FROM " . HTSI_DB::codes() . ' c LEFT JOIN ' . HTSI_DB::readers() . " r ON r.id = c.reader_id $where ORDER BY c.id", ARRAY_N );
+		self::csv( 'htsi-codes-' . gmdate( 'Y-m-d' ) . '.csv', array( 'code', 'volume', 'given_out', 'reader_email', 'used_on', 'note', 'created' ), $rows );
 	}
 
 	/* ---------- readers ---------- */
