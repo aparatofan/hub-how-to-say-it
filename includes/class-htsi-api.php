@@ -158,6 +158,7 @@ class HTSI_Api {
 				'map_url'   => $ch['map_url'],
 				'branches'  => array_values( $ch['branches'] ),
 				'exercises' => array_values( $ch['exercises'] ),
+				'pictures'  => HTSI_Content::pictures( $v, $c ),
 			)
 		);
 	}

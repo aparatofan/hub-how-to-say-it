@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       HUB — How to Say It in English
  * Description:       Mobile-first reader hub for the "How to Say It in English" mind-map books: mind maps, TBT Fill games, revision exercises and keys, unlocked with a book code.
- * Version:           0.4.0
+ * Version:           0.5.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            The Blue Tree
@@ -13,7 +13,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'HTSI_VERSION', '0.4.0' );
+define( 'HTSI_VERSION', '0.5.0' );
 define( 'HTSI_FILE', __FILE__ );
 define( 'HTSI_DIR', plugin_dir_path( __FILE__ ) );
 define( 'HTSI_URL', plugin_dir_url( __FILE__ ) );
@@ -33,6 +33,10 @@ add_action(
 		HTSI_DB::maybe_upgrade();
 		HTSI_Api::init();
 		HTSI_Frontend::init();
+		// Chapter illustrations: a Media Library change clears the cached picture lists.
+		foreach ( array( 'add_attachment', 'edit_attachment', 'delete_attachment' ) as $hook ) {
+			add_action( $hook, array( 'HTSI_Content', 'flush_pictures' ) );
+		}
 		if ( is_admin() ) {
 			HTSI_Admin::init();
 		}

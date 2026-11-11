@@ -16,6 +16,7 @@
     work: {},         // "v-c-i" -> answers for one exercise (kept only while the page is open)
     mapSent: {},      // "v-c" -> email address, or {error}
     open: {},         // "v-c" -> which chapter sections are open (all closed at first)
+    slide: {},        // "v-c" -> index of the picture shown in the chapter's picture strip
     busy: false
   };
 
@@ -118,7 +119,7 @@
   function applyState(data) {
     S.reader = data.reader || null;
     S.volumes = data.volumes || [];
-    if (!S.reader) { S.chapters = {}; S.work = {}; S.mapSent = {}; S.open = {}; }
+    if (!S.reader) { S.chapters = {}; S.work = {}; S.mapSent = {}; S.open = {}; S.slide = {}; }
   }
 
   function loadChapter(v, c) {
@@ -258,6 +259,103 @@
     '</div>';
   }
 
+  /* ----- chapter pictures (docs/chapter-illustrations.md) ----- */
+
+  // A strip of branch pictures, one per screen. Decoration only: no links, no buttons.
+  function gallery(k, pics) {
+    if (!pics || !pics.length) { return ''; }
+    var many = pics.length > 1;
+    var cur = Math.max(0, Math.min(S.slide[k] || 0, pics.length - 1));
+    var slides = pics.map(function (p, i) {
+      return '<figure class="htsi-slide"' + (many ? ' role="group" aria-roledescription="slide" aria-label="' + (i + 1) + ' of ' + pics.length + '"' : '') + '>' +
+        '<img src="' + esc(p.src) + '"' +
+          (p.srcset ? ' srcset="' + esc(p.srcset) + '" sizes="(min-width: 720px) 720px, 100vw"' : '') +
+          ' width="' + (parseInt(p.width, 10) || 16) + '" height="' + (parseInt(p.height, 10) || 9) + '"' +
+          ' alt="' + esc(p.alt) + '" draggable="false"' +
+          (i === 0 ? ' fetchpriority="high"' : ' loading="lazy" decoding="async"') + '>' +
+        (p.caption ? '<figcaption>' + esc(p.caption) + '</figcaption>' : '') +
+      '</figure>';
+    }).join('');
+    var dots = many ? '<div class="htsi-dots" aria-hidden="true">' + pics.map(function (p, i) {
+      return '<span' + (i === cur ? ' class="is-on"' : '') + '></span>';
+    }).join('') + '</div>' : '';
+    return '<div class="htsi-gallery" data-k="' + esc(k) + '"' + (many ? ' role="region" aria-roledescription="carousel" aria-label="Pictures for this chapter"' : '') + '>' +
+      '<div class="htsi-gallery-track' + (many ? ' is-multi' : '') + '"' + (many ? ' tabindex="0" aria-label="Pictures. Use the left and right arrow keys."' : '') + '>' + slides + '</div>' +
+      dots + '</div>';
+  }
+
+  function reducedMotion() {
+    return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  }
+
+  // Called after every render(): put the strip back on the reader's picture and wire it up.
+  // The element is new each time, so listeners never pile up.
+  function initGallery() {
+    var box = app.querySelector('.htsi-gallery');
+    if (!box) { return; }
+    var track = box.querySelector('.htsi-gallery-track');
+    var count = track.children.length;
+    var k = box.getAttribute('data-k');
+    var dots = box.querySelectorAll('.htsi-dots span');
+
+    function width() { return track.clientWidth || 1; }
+    function current() { return Math.max(0, Math.min(count - 1, Math.round(track.scrollLeft / width()))); }
+    function mark(i) {
+      for (var d = 0; d < dots.length; d++) { dots[d].className = d === i ? 'is-on' : ''; }
+    }
+    function move(i, smooth) {
+      i = Math.max(0, Math.min(count - 1, i));
+      S.slide[k] = i;
+      mark(i);
+      if (smooth && !reducedMotion() && track.scrollTo) {
+        track.scrollTo({ left: i * width(), behavior: 'smooth' });
+      } else {
+        track.scrollLeft = i * width();
+      }
+    }
+
+    var start = Math.max(0, Math.min(count - 1, S.slide[k] || 0));
+    track.scrollLeft = start * width();   // straight away, no animation
+    if (count < 2) { return; }
+
+    track.addEventListener('scroll', function () {
+      var i = current();
+      if (i !== S.slide[k]) { S.slide[k] = i; mark(i); }
+    }, { passive: true });
+
+    track.addEventListener('keydown', function (ev) {
+      if (ev.key !== 'ArrowLeft' && ev.key !== 'ArrowRight') { return; }
+      ev.preventDefault();
+      move(current() + (ev.key === 'ArrowRight' ? 1 : -1), true);
+    });
+
+    // Mouse drag (laptops). Touch uses the browser's own swiping and scroll snap.
+    var drag = null;
+    track.addEventListener('pointerdown', function (ev) {
+      if (ev.pointerType !== 'mouse' || ev.button !== 0) { return; }
+      drag = { x: ev.clientX, left: track.scrollLeft, from: current(), id: ev.pointerId };
+      track.classList.add('is-drag');
+      if (track.setPointerCapture) { track.setPointerCapture(ev.pointerId); }
+      ev.preventDefault();
+    });
+    track.addEventListener('pointermove', function (ev) {
+      if (!drag || ev.pointerId !== drag.id) { return; }
+      track.scrollLeft = drag.left - (ev.clientX - drag.x);
+    });
+    function endDrag(ev) {
+      if (!drag || ev.pointerId !== drag.id) { return; }
+      var dx = ev.type === 'pointercancel' ? 0 : ev.clientX - drag.x;
+      var limit = Math.min(60, width() / 6);
+      var to = drag.from + (dx < -limit ? 1 : (dx > limit ? -1 : 0));
+      drag = null;
+      move(to, true);
+      // Snap stays off until the move has finished, so it cannot pull the strip back.
+      setTimeout(function () { track.classList.remove('is-drag'); }, reducedMotion() ? 0 : 450);
+    }
+    track.addEventListener('pointerup', endDrag);
+    track.addEventListener('pointercancel', endDrag);
+  }
+
   function viewChapter(r, ch) {
     var k = r.v + '-' + r.c;
     var base = '#/' + r.v + '/' + r.c;
@@ -313,7 +411,7 @@
     html += section(k, 4, 'key', 'Key to exercises', 'Answers and notes, for learners and teachers',
       hasEx ? exRows('/key/') : '<div class="htsi-empty">The key for this chapter is not ready yet. Please come back soon.</div>');
 
-    return '<div class="htsi-screen">' + hero(r, ch.title, '#/', 'All chapters') + '<div class="htsi-main">' + html + '</div></div>';
+    return '<div class="htsi-screen">' + hero(r, ch.title, '#/', 'All chapters') + gallery(k, ch.pictures) + '<div class="htsi-main">' + html + '</div></div>';
   }
 
   /* ----- exercises ----- */
@@ -568,6 +666,7 @@
     }
 
     app.innerHTML = html;
+    initGallery();
     if (screen !== lastScreen) {
       lastScreen = screen;
       window.scrollTo(0, 0);

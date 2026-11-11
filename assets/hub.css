@@ -259,10 +259,25 @@ body.htsi-body {
 .htsi-checklist li { display: flex; gap: 12px; }
 .htsi-box { width: 20px; height: 20px; border: 2px solid var(--blue); border-radius: 5px; flex-shrink: 0; margin-top: 3px; }
 
+/* ----- chapter pictures (docs/chapter-illustrations.md) ----- */
+.htsi-gallery { position: relative; background: #EDE6DA; }
+.htsi-gallery-track { display: flex; overflow-x: auto; overflow-y: hidden; scroll-snap-type: x mandatory; overscroll-behavior-x: contain; touch-action: pan-x pan-y; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+.htsi-gallery-track::-webkit-scrollbar { display: none; }
+.htsi-gallery-track.is-multi { cursor: grab; }
+.htsi-gallery-track.is-drag { scroll-snap-type: none; cursor: grabbing; user-select: none; -webkit-user-select: none; }
+#htsi-app .htsi-gallery-track:focus-visible { outline: 3px solid var(--blue); outline-offset: -3px; }
+.htsi-slide { position: relative; flex: 0 0 100%; width: 100%; margin: 0; aspect-ratio: 16 / 9; overflow: hidden; background: #EDE6DA; scroll-snap-align: start; scroll-snap-stop: always; }
+.htsi-slide img { display: block; width: 100%; height: 100%; object-fit: cover; -webkit-user-drag: none; user-select: none; -webkit-user-select: none; }
+.htsi-slide figcaption { position: absolute; left: 0; right: 0; bottom: 0; padding: 18px 16px 9px; background: linear-gradient(to top, rgba(16, 37, 100, .30) 0, rgba(16, 37, 100, 0) 40px); font-family: var(--slab); font-weight: 500; font-size: 13px; line-height: 1.3; letter-spacing: 0.02em; text-align: center; color: rgba(255, 255, 255, .72); text-shadow: 0 1px 3px rgba(16, 37, 100, .35); pointer-events: none; }
+.htsi-dots { position: absolute; top: 12px; right: 14px; display: flex; gap: 6px; pointer-events: none; }
+.htsi-dots span { width: 7px; height: 7px; border-radius: 50%; background: rgba(255, 255, 255, .45); box-shadow: 0 0 2px rgba(16, 37, 100, .3); }
+.htsi-dots span.is-on { background: rgba(255, 255, 255, .95); }
+
 @media (min-width: 520px) {
   body.htsi-body #htsi-app { box-shadow: 0 0 60px rgba(16, 37, 100, .12); }
 }
 @media (prefers-reduced-motion: no-preference) {
   .htsi-btn, .htsi-opt, .htsi-vol, .htsi-row { transition: background-color .15s ease, border-color .15s ease; }
   .htsi-acc-chev { transition: transform .2s ease; }
+  .htsi-dots span { transition: background-color .2s ease; }
 }

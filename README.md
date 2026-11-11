@@ -17,6 +17,7 @@ A WordPress plugin for The Blue Tree. Readers scan the QR code on a printed mind
 | One reader per code | The first email used with a code owns it. Any other email is refused. Codes never expire. |
 | Signing in again | Same code + same email, on any device. A cookie keeps the reader signed in for a year. |
 | More volumes | A signed-in reader types the next volume's code inside the HUB. |
+| Chapter pictures | One watercolour per branch, found in the Media Library by file name (`v1ch1b1.jpeg` = Volume 1, Chapter 1, Branch 1) and shown as a swipeable strip under the chapter header. See [docs/chapter-illustrations.md](docs/chapter-illustrations.md). |
 | Readers | Kept in the plugin's own tables. They are not WordPress users and get no access to the rest of TBT. |
 | News consent | A separate, unticked box at sign-in. The reader can switch it off on the home screen. The date of consent is stored. |
 | Tracking | None. Exercise answers stay in the browser and are gone when the page is closed. |
