@@ -19,6 +19,8 @@
     slide: {},        // "v-c" -> index of the picture shown in the chapter's picture strip
     snake: {},        // Ending chapter -> revision content, loaded through the authenticated API
     snakeSeen: {},    // Ending chapter -> answers viewed during this page session only
+    final: null,      // THE FINAL TEST: {items, progress} (progress = rounds saved on the server)
+    finalPlay: null,  // The round being played (kept only while the page is open)
     busy: false
   };
 
@@ -91,11 +93,15 @@
   // #/1/1         chapter
   // #/1/1/ex/0    exercise
   // #/1/1/key/0   key to one exercise
+  // #/1/10/final  THE FINAL TEST (/play = a round, /key = all answers)
   function route() {
     var p = (location.hash || '').replace(/^#\/?/, '').split('/');
     var v = parseInt(p[0], 10), c = parseInt(p[1], 10);
     if (!(v >= 1 && v <= 3 && c >= 1 && c <= 10)) { return { name: 'home' }; }
     if (v === 1 && (c === 3 || c === 6 || c === 9) && p[2] === 'snake') { return { name: 'snake', v: v, c: c }; }
+    if (v === 1 && c === 10 && p[2] === 'final') {
+      return { name: p[3] === 'key' ? 'final-key' : (p[3] === 'play' ? 'final-play' : 'final'), v: v, c: c };
+    }
     if (p[2] === 'ex' && /^\d+$/.test(p[3] || '')) { return { name: 'ex', v: v, c: c, i: parseInt(p[3], 10) }; }
     if (p[2] === 'key') { return { name: 'key', v: v, c: c, i: /^\d+$/.test(p[3] || '') ? parseInt(p[3], 10) : 0 }; }
     return { name: 'chapter', v: v, c: c };
@@ -122,7 +128,7 @@
   function applyState(data) {
     S.reader = data.reader || null;
     S.volumes = data.volumes || [];
-    if (!S.reader) { S.chapters = {}; S.work = {}; S.mapSent = {}; S.open = {}; S.slide = {}; S.snake = {}; S.snakeSeen = {}; }
+    if (!S.reader) { S.chapters = {}; S.work = {}; S.mapSent = {}; S.open = {}; S.slide = {}; S.snake = {}; S.snakeSeen = {}; S.final = null; S.finalPlay = null; }
   }
 
   function loadChapter(v, c) {
@@ -254,6 +260,388 @@
     }
   }
 
+  /* ---------- THE FINAL TEST (Volume 1, after Chapter 10) ----------
+     100 short conversations in four rounds of 25. The learner judges B's reply:
+     swipe up = Correct, swipe down = Incorrect (the vertical gesture of TBT Swipe).
+     The card then turns over to show the answer, the correct version and a note.
+     A finished round is saved on the server; a round in progress lives only here. */
+
+  var FINAL_THRESHOLD = 0.22;   // share of the card's height that commits a swipe
+  var FINAL_FLICK = 0.5;        // px/ms: a fast flick commits below the threshold
+
+  function isFinalRoute() { return route().name.indexOf('final') === 0; }
+
+  function finalRow(open) {
+    var body = '<span class="htsi-row-num htsi-final-mark" aria-hidden="true">✓</span>' +
+      '<span class="htsi-row-main"><span class="htsi-row-title">THE FINAL TEST</span>' +
+      '<span class="htsi-row-sub">Revision · Chapters 01–10 · 100 questions</span></span>';
+    return open
+      ? '<a class="htsi-row htsi-final-row" href="#/1/10/final">' + body + '<span class="htsi-row-end">' + ICON.right + '</span></a>'
+      : '<div class="htsi-row htsi-final-row is-off">' + body + '<span aria-label="Volume locked">' + ICON.lock + '</span></div>';
+  }
+
+  function loadFinal() {
+    if (S.final) { return; }
+    S.final = { loading: true };
+    var reader = S.reader;
+    api('GET', '/final-test').then(function (data) {
+      if (S.reader !== reader) { return; }
+      S.final = data && Array.isArray(data.items) && data.items.length === 100
+        ? { items: data.items, progress: data.progress || {} }
+        : { error: 'The test could not be loaded. Please try again.' };
+      if (isFinalRoute()) { render(); }
+    }, function (err) {
+      if (S.reader !== reader) { return; }
+      if (err.status === 401) { applyState({}); render(); return; }
+      S.final = { error: err.message };
+      if (isFinalRoute()) { render(); }
+    });
+  }
+
+  function finalRound(r) {
+    return S.final.items.filter(function (it) { return it.r === r; });
+  }
+
+  function finalHead(title, intro, backHref, backLabel) {
+    return '<div class="htsi-exhead"><a class="htsi-back" href="' + backHref + '">' + ICON.left + esc(backLabel) + '</a>' +
+      '<div class="htsi-eyebrow">Volume 1 · Chapters 01–10</div><h1>' + esc(title) + '</h1>' +
+      '<div class="htsi-rule"></div>' + (intro ? '<p>' + esc(intro) + '</p>' : '') + '</div>';
+  }
+
+  // Loading and error states shared by the overview and the key.
+  function finalNotReady(head) {
+    var f = S.final;
+    if (f.loading) { return '<div class="htsi-screen">' + head + viewLoading('Loading the test…') + '</div>'; }
+    return '<div class="htsi-screen">' + head + '<div class="htsi-exbody"><p class="htsi-error" role="alert">' + esc(f.error) + '</p>' +
+      '<button type="button" class="htsi-btn" data-act="final-retry">Try again</button></div></div>';
+  }
+
+  function finalMessage(score, total) {
+    var share = total ? score / total : 0;
+    if (share >= 0.9) { return 'Excellent! You really know how to say it.'; }
+    if (share >= 0.7) { return 'Well done! Look at your mistakes and try them again.'; }
+    if (share >= 0.5) { return 'Good work. Practise your mistakes, then play the round again.'; }
+    return 'Keep going. Open the mind maps again, then try the round once more.';
+  }
+
+  function viewFinal() {
+    if (!S.final) { loadFinal(); }
+    var head = finalHead('THE FINAL TEST', 'Is B’s reply OK? Swipe up for Correct, down for Incorrect.', '#/', 'All chapters');
+    if (!S.final.items) { return finalNotReady(head); }
+    var p = S.final.progress || {}, done = 0, score = 0, total = 0;
+
+    var rounds = [1, 2, 3, 4].map(function (r) {
+      var res = p[r];
+      var from = (r - 1) * 25 + 1, to = r * 25;
+      if (res) { done++; score += res.score; total += res.total; }
+      var right = res
+        ? '<div class="htsi-fround-score" aria-label="Score ' + res.score + ' out of ' + res.total + '">' + res.score + '<span>/' + res.total + '</span></div>'
+        : '<div class="htsi-fround-todo">Not played yet</div>';
+      var practice = res && res.wrong && res.wrong.length
+        ? '<button type="button" class="htsi-link" data-act="final-practice" data-r="' + r + '">Practise your ' + res.wrong.length + (res.wrong.length === 1 ? ' mistake' : ' mistakes') + '</button>'
+        : '';
+      return '<div class="htsi-card htsi-fround' + (res ? ' is-done' : '') + '">' +
+        '<div class="htsi-fround-top"><div><h2>Round ' + r + '</h2><p class="htsi-small htsi-muted">Questions ' + from + '–' + to + '</p></div>' + right + '</div>' +
+        '<button type="button" class="' + (res ? 'htsi-btn-ghost' : 'htsi-btn') + '" data-act="final-start" data-r="' + r + '">' + (res ? 'Play again' : 'Start Round ' + r) + '</button>' +
+        practice + '</div>';
+    }).join('');
+
+    var summary = '';
+    if (done) {
+      summary = '<div class="htsi-card htsi-ftotal"><div class="htsi-eyebrow">' + (done === 4 ? 'Final score' : 'Your score so far') + '</div>' +
+        '<div class="htsi-ftotal-n">' + score + '<span> / ' + total + '</span></div>' +
+        '<p class="htsi-small htsi-muted">' + done + ' of 4 rounds done' + (done === 4 ? ' · ' + esc(finalMessage(score, total)) : '. Your score is saved after each round.') + '</p></div>';
+    }
+
+    return '<div class="htsi-screen">' + head + '<div class="htsi-exbody">' +
+      summary +
+      '<details class="htsi-card htsi-snake-rules htsi-frules"><summary>How to play</summary>' +
+        '<ol><li>Read the short conversation. B’s reply is in bold.</li>' +
+        '<li>Is it the right thing to say, and is the English correct? Swipe up for <strong>Correct</strong> or down for <strong>Incorrect</strong>. You can also tap the buttons or use the arrow keys.</li>' +
+        '<li>The card turns over. You see the answer, the correct version and a short note.</li>' +
+        '<li>Each round has 25 questions. When you finish a round, your score is saved, so you can stop and come back later.</li></ol>' +
+        '<p>Working on paper? Number 1–100, tick Correct or Incorrect, then check your answers in the Key.</p></details>' +
+      rounds +
+      '<div class="htsi-list"><a class="htsi-row" href="#/1/10/final/key"><span class="htsi-dot" aria-hidden="true">' + ICON.key + '</span>' +
+        '<span class="htsi-row-main"><span class="htsi-row-title">Key</span><span class="htsi-row-sub">All 100 answers with notes, for learners and teachers</span></span>' +
+        '<span class="htsi-row-end">' + ICON.right + '</span></a></div>' +
+    '</div></div>';
+  }
+
+  /* ----- playing a round ----- */
+
+  function finalStart(r, items, practice) {
+    S.finalPlay = { round: r, items: items, i: 0, answers: {}, missed: [], practice: !!practice,
+      revealed: false, right: false, dir: 'up', done: false, busy: false, saving: false, saved: false, saveError: '' };
+    go('#/1/10/final/play');
+    window.scrollTo(0, 0);
+  }
+
+  function finalLines(item, revealed) {
+    var cls = revealed ? (item.ok ? ' is-ok' : ' is-no') : '';
+    return (item.sit ? '<p class="htsi-fsit">' + esc(item.sit) + '</p>' : '') +
+      '<div class="htsi-flines"><p><span class="htsi-sp">A:</span> ' + esc(item.a) + '</p>' +
+      '<p class="htsi-fb' + cls + '"><span class="htsi-sp">B:</span> <strong>' + esc(item.b) + '</strong></p></div>';
+  }
+
+  function finalAnswer(item) {
+    return '<p class="htsi-fverdict">B’s reply is <span class="htsi-fpill ' + (item.ok ? 'is-ok">correct' : 'is-no">incorrect') + '</span></p>' +
+      (item.ok ? '' : '<div class="htsi-ffix"><span>Better</span><strong>' + esc(item.fix) + '</strong></div>') +
+      (item.note ? '<p class="htsi-fnote">' + esc(item.note) + '</p>' : '');
+  }
+
+  function viewFinalPlay() {
+    var p = S.finalPlay;
+    if (!p || !S.final || !S.final.items) {
+      // A reload ends a round in progress: go back to the overview.
+      location.replace('#/1/10/final');
+      return viewLoading();
+    }
+    if (p.done) { return viewFinalEnd(p); }
+    var item = p.items[p.i];
+    var label = p.practice ? 'Practice' : 'Round ' + p.round;
+    var last = p.i === p.items.length - 1;
+    var card;
+    if (p.revealed) {
+      card = '<div class="htsi-fcard is-reveal" tabindex="-1">' +
+        '<div class="htsi-fres ' + (p.right ? 'is-right">Right!' : 'is-wrong">Not quite.') + '</div>' +
+        '<div class="htsi-fq">Question ' + item.n + '</div>' + finalLines(item, true) + finalAnswer(item) +
+        '<button type="button" class="htsi-btn" data-act="final-next">' + (last ? 'See your score' : 'Next') + '</button></div>';
+    } else {
+      card = '<div class="htsi-fcard is-deal" tabindex="-1" aria-describedby="htsi-fhint">' +
+        '<div class="htsi-fq">Question ' + item.n + '</div>' + finalLines(item, false) +
+        '<p class="htsi-fhint" id="htsi-fhint">Is B’s reply OK?</p></div>';
+    }
+    // Once the card has turned over, the two answer buttons step aside to give the card room.
+    var upZone = p.revealed ? '' : '<button type="button" class="htsi-fzone is-up" data-act="final-pick" data-dir="up"><span class="htsi-fzone-arrow" aria-hidden="true">↑</span>Correct</button>';
+    var downZone = p.revealed ? '' : '<button type="button" class="htsi-fzone is-down" data-act="final-pick" data-dir="down">Incorrect<span class="htsi-fzone-arrow" aria-hidden="true">↓</span></button>';
+    return '<div class="htsi-screen htsi-fplay' + (p.revealed ? ' is-reveal' : '') + '">' +
+      '<div class="htsi-fbar"><button type="button" class="htsi-link htsi-fquit" data-act="final-quit">' + ICON.left + 'Stop</button>' +
+        '<span class="htsi-fprog" aria-live="polite">' + esc(label) + ' · ' + (p.i + 1) + ' / ' + p.items.length + '</span></div>' +
+      upZone + '<div class="htsi-fstage">' + card + '</div>' + downZone +
+    '</div>';
+  }
+
+  function viewFinalEnd(p) {
+    var score = p.items.filter(function (it) { return p.answers[it.n] === it.ok; }).length;
+    var total = p.items.length;
+    var title = p.practice ? 'Practice done' : 'Round ' + p.round + ' done';
+    var status = '';
+    if (!p.practice) {
+      if (p.saving) { status = '<p class="htsi-small htsi-muted" role="status">Saving your score…</p>'; }
+      else if (p.saveError) { status = '<p class="htsi-error" role="alert">' + esc(p.saveError) + '</p><button type="button" class="htsi-btn-ghost" data-act="final-save">Try saving again</button>'; }
+      else if (p.saved) { status = '<p class="htsi-ok" role="status">Score saved. Come back to the next round at any time.</p>'; }
+    }
+    var missed = p.missed.length
+      ? '<h2 class="htsi-khead">' + (p.missed.length === 1 ? 'Your mistake' : 'Your mistakes') + '</h2>' + p.missed.map(function (it) {
+          return '<div class="htsi-card htsi-fkey"><div class="htsi-itemnum">QUESTION ' + it.n + '</div>' + finalLines(it, true) + finalAnswer(it) + '</div>';
+        }).join('')
+      : '<div class="htsi-card"><p>No mistakes. Brilliant!</p></div>';
+    var next = !p.practice && p.round < 4
+      ? '<button type="button" class="htsi-btn" data-act="final-start" data-r="' + (p.round + 1) + '">Start Round ' + (p.round + 1) + '</button>' : '';
+    var again = p.missed.length
+      ? '<button type="button" class="' + (next ? 'htsi-btn-ghost' : 'htsi-btn') + '" data-act="final-practice-now">Practise ' + (p.missed.length === 1 ? 'this one' : 'these ' + p.missed.length) + ' again</button>' : '';
+    return '<div class="htsi-screen">' + finalHead(title, '', '#/1/10/final', 'THE FINAL TEST') + '<div class="htsi-exbody">' +
+      '<div class="htsi-card htsi-ftotal"><div class="htsi-ftotal-n">' + score + '<span> / ' + total + '</span></div>' +
+        '<p>' + esc(p.practice ? (score === total ? 'All right this time. Well done!' : 'Keep practising. You are getting there.') : finalMessage(score, total)) + '</p>' + status + '</div>' +
+      next + again +
+      '<a class="htsi-btn-ghost htsi-fback" href="#/1/10/final">Back to THE FINAL TEST</a>' +
+      missed + '</div></div>';
+  }
+
+  function finalSave() {
+    var p = S.finalPlay;
+    if (!p || p.practice || p.saving) { return; }
+    p.saving = true; p.saveError = '';
+    var reader = S.reader;
+    api('POST', '/final-test/round', { round: p.round, answers: p.answers }).then(function (data) {
+      if (S.reader !== reader) { return; }
+      p.saving = false; p.saved = true;
+      if (S.final && S.final.items && data && data.progress) { S.final.progress = data.progress; }
+      if (route().name === 'final-play' && S.finalPlay === p) { render(); }
+    }, function (err) {
+      if (S.reader !== reader) { return; }
+      if (err.status === 401) { applyState({}); render(); return; }
+      p.saving = false; p.saveError = err.message;
+      if (route().name === 'final-play' && S.finalPlay === p) { render(); }
+    });
+  }
+
+  function finalFocus(selector) {
+    var el = app.querySelector(selector);
+    if (el) { el.focus({ preventScroll: true }); }
+  }
+
+  // The learner's decision. dir: 'up' = Correct, 'down' = Incorrect.
+  function finalCommit(dir) {
+    var p = S.finalPlay;
+    if (!p || p.revealed || p.done || p.busy) { return; }
+    var item = p.items[p.i];
+    var says = dir === 'up';
+    p.answers[item.n] = says;
+    p.right = says === item.ok;
+    if (!p.right) { p.missed.push(item); }
+    p.dir = dir;
+    p.revealed = true;
+    var card = app.querySelector('.htsi-fcard');
+    function show() {
+      p.busy = false;
+      if (route().name === 'final-play' && S.finalPlay === p) {
+        render();
+        finalFocus('[data-act="final-next"]');
+        var next = app.querySelector('[data-act="final-next"]');
+        if (next && next.scrollIntoView) { next.scrollIntoView({ block: 'nearest' }); }
+      }
+    }
+    if (!card || reducedMotion()) { show(); return; }
+    // A short nudge towards the chosen side, then the card turns over.
+    p.busy = true;
+    card.style.transition = 'transform 160ms ease-in, opacity 160ms ease-in';
+    card.style.transform = 'translateY(' + (dir === 'up' ? -48 : 48) + 'px) scale(.96)';
+    card.style.opacity = '0.15';
+    setTimeout(show, 170);
+  }
+
+  function finalNext() {
+    var p = S.finalPlay;
+    if (!p || !p.revealed || p.busy) { return; }
+    var card = app.querySelector('.htsi-fcard');
+    function advance() {
+      p.busy = false; p.revealed = false; p.i++;
+      if (p.i >= p.items.length) {
+        p.done = true;
+        if (!p.practice) { finalSave(); }
+      }
+      if (route().name === 'final-play' && S.finalPlay === p) {
+        render();
+        if (p.done) { window.scrollTo(0, 0); } else { finalFocus('.htsi-fcard'); }
+      }
+    }
+    if (!card || reducedMotion()) { advance(); return; }
+    // The card leaves the way it was sent: up off the top, or down off the bottom.
+    p.busy = true;
+    card.style.transition = 'transform 220ms cubic-bezier(.4,0,.9,.5), opacity 200ms linear 40ms';
+    card.style.transform = p.dir === 'up' ? 'translate(24px,-130%) rotate(7deg)' : 'translate(-18px,130%) rotate(-5deg)';
+    card.style.opacity = '0';
+    setTimeout(advance, 230);
+  }
+
+  // Wire the drag on the card after each render (the element is new each time).
+  function initFinalPlay() {
+    var p = S.finalPlay;
+    var card = app.querySelector('.htsi-fcard:not(.is-reveal)');
+    if (!card || !p || p.revealed || p.done) { return; }
+    var up = app.querySelector('.htsi-fzone.is-up'), down = app.querySelector('.htsi-fzone.is-down');
+    var drag = null;
+
+    function zones(dy, prog) {
+      up.classList.toggle('is-armed', dy < 0 && prog >= 1);
+      down.classList.toggle('is-armed', dy > 0 && prog >= 1);
+      up.classList.toggle('is-dim', dy > 0 && prog > 0.3);
+      down.classList.toggle('is-dim', dy < 0 && prog > 0.3);
+    }
+
+    card.addEventListener('pointerdown', function (ev) {
+      if (ev.button > 0 || p.revealed || p.busy) { return; }
+      drag = { y: ev.clientY, t: Date.now(), id: ev.pointerId, h: card.offsetHeight || 320, moved: false };
+      try { card.setPointerCapture(ev.pointerId); } catch (e) { /* not supported */ }
+    });
+    card.addEventListener('pointermove', function (ev) {
+      if (!drag || ev.pointerId !== drag.id) { return; }
+      var dy = ev.clientY - drag.y;
+      if (!drag.moved && Math.abs(dy) < 6) { return; }
+      drag.moved = true;
+      var prog = Math.min(1, Math.abs(dy) / (drag.h * FINAL_THRESHOLD));
+      card.style.transition = 'none';
+      card.style.transform = 'translateY(' + Math.round(dy) + 'px) scale(' + (1 - 0.05 * prog).toFixed(3) + ')';
+      zones(dy, prog);
+    });
+    function end(ev) {
+      if (!drag || ev.pointerId !== drag.id) { return; }
+      var d = drag;
+      drag = null;
+      var dy = ev.type === 'pointercancel' ? 0 : ev.clientY - d.y;
+      var speed = dy / Math.max(1, Date.now() - d.t);
+      zones(0, 0);
+      if (d.moved && (Math.abs(dy) > d.h * FINAL_THRESHOLD || (Math.abs(speed) > FINAL_FLICK && Math.abs(dy) > 24))) {
+        finalCommit(dy < 0 ? 'up' : 'down');
+      } else {
+        card.style.transition = 'transform 220ms ease-out';
+        card.style.transform = '';
+      }
+    }
+    card.addEventListener('pointerup', end);
+    card.addEventListener('pointercancel', end);
+  }
+
+  function finalAction(act, t) {
+    var f = S.final;
+    if (act === 'final-retry') { S.final = null; render(); return; }
+    if (!f || !f.items) { return; }
+    var p = S.finalPlay;
+    if (act === 'final-start') {
+      var r = parseInt(t.getAttribute('data-r'), 10);
+      if (r >= 1 && r <= 4) { finalStart(r, finalRound(r), false); }
+    } else if (act === 'final-practice') {
+      var pr = parseInt(t.getAttribute('data-r'), 10), res = (f.progress || {})[pr];
+      var wrong = res && res.wrong ? res.wrong : [];
+      var items = f.items.filter(function (it) { return wrong.indexOf(it.n) !== -1; });
+      if (items.length) { finalStart(pr, items, true); }
+    } else if (act === 'final-practice-now') {
+      if (p && p.missed.length) { finalStart(p.round, p.missed.slice(), true); }
+    } else if (act === 'final-pick') {
+      finalCommit(t.getAttribute('data-dir') === 'up' ? 'up' : 'down');
+    } else if (act === 'final-next') {
+      finalNext();
+    } else if (act === 'final-save') {
+      finalSave();
+    } else if (act === 'final-quit') {
+      if (p && !p.done && !p.practice && p.i > 0 &&
+          !window.confirm('Stop this round? Your answers in this round will not be saved.')) { return; }
+      S.finalPlay = null;
+      go('#/1/10/final');
+    } else if (act === 'final-jump') {
+      var box = app.querySelector('#htsi-fk-' + t.getAttribute('data-r'));
+      if (box) { box.scrollIntoView({ behavior: reducedMotion() ? 'auto' : 'smooth', block: 'start' }); }
+    }
+  }
+
+  // Arrow keys: up = Correct, down = Incorrect. Right arrow (or Enter / Space away from a button) = Next.
+  window.addEventListener('keydown', function (ev) {
+    var p = S.finalPlay;
+    if (!p || p.done || ev.altKey || ev.ctrlKey || ev.metaKey || route().name !== 'final-play') { return; }
+    var onControl = /^(BUTTON|A|INPUT|TEXTAREA|SELECT|SUMMARY)$/.test((document.activeElement || {}).tagName || '');
+    if (!p.revealed && (ev.key === 'ArrowUp' || ev.key === 'ArrowDown')) {
+      ev.preventDefault();
+      finalCommit(ev.key === 'ArrowUp' ? 'up' : 'down');
+    } else if (p.revealed && (ev.key === 'ArrowRight' || (!onControl && (ev.key === 'Enter' || ev.key === ' ')))) {
+      ev.preventDefault();
+      finalNext();
+    }
+  });
+
+  /* ----- key ----- */
+
+  function viewFinalKey() {
+    if (!S.final) { loadFinal(); }
+    var head = finalHead('Key', 'All 100 answers, with the correct version and a short note.', '#/1/10/final', 'THE FINAL TEST');
+    if (!S.final.items) { return finalNotReady(head); }
+    var jump = '<div class="htsi-fjump" aria-label="Go to a round">' + [1, 2, 3, 4].map(function (r) {
+      return '<button type="button" class="htsi-btn-ghost" data-act="final-jump" data-r="' + r + '">Round ' + r + '</button>';
+    }).join('') + '</div>';
+    var body = [1, 2, 3, 4].map(function (r) {
+      return '<h2 class="htsi-khead" id="htsi-fk-' + r + '" tabindex="-1">Round ' + r + ' · Questions ' + ((r - 1) * 25 + 1) + '–' + (r * 25) + '</h2>' +
+        finalRound(r).map(function (it) {
+          var o = outline(1, it.ch);
+          return '<div class="htsi-card htsi-fkey"><div class="htsi-fkey-top"><span class="htsi-itemnum">QUESTION ' + it.n + '</span>' +
+            '<span class="htsi-small htsi-muted">Ch ' + it.ch + (o ? ' · ' + esc(o.title) : '') + '</span></div>' +
+            finalLines(it, true) + finalAnswer(it) + '</div>';
+        }).join('');
+    }).join('');
+    return '<div class="htsi-screen">' + head + '<div class="htsi-exbody">' + jump + body +
+      '<a class="htsi-btn-ghost htsi-fback" href="#/1/10/final">Back to THE FINAL TEST</a></div></div>';
+  }
+
   /* ---------- screens ---------- */
 
   function viewLoading(text) {
@@ -265,6 +653,7 @@
     if (r.v) {
       var o = outline(r.v, r.c);
       if (r.name === 'snake') { chip = '<div class="htsi-chip">Volume 1 · THE SNAKE · Revision of Chapters ' + snakeRange(r.c) + '</div>'; }
+      else if (r.name.indexOf('final') === 0) { chip = '<div class="htsi-chip">Volume 1 · THE FINAL TEST · Chapters 01–10</div>'; }
       else if (o) { chip = '<div class="htsi-chip">Volume ' + r.v + ' · Chapter ' + r.c + ' · ' + esc(o.title) + '</div>'; }
     }
     var privacy = safeUrl(C.privacy) ? ' <a href="' + esc(C.privacy) + '" target="_blank" rel="noopener">Privacy policy</a>' : '';
@@ -314,6 +703,7 @@
 
     var rows = vol.chapters.map(function (o) {
       var revision = vol.n === 1 && (o.n === 3 || o.n === 6 || o.n === 9) ? snakeRow(open, o.n) : '';
+      if (vol.n === 1 && o.n === 10) { revision = finalRow(open); }
       var num = (o.n < 10 ? '0' : '') + o.n;
       var status = chapterStatus(o);
       if (open && status) {
@@ -771,6 +1161,12 @@
       screen = 'home-locked';
     } else if (r.name === 'snake') {
       html = viewSnake();
+    } else if (r.name === 'final') {
+      html = viewFinal();
+    } else if (r.name === 'final-play') {
+      html = viewFinalPlay();
+    } else if (r.name === 'final-key') {
+      html = viewFinalKey();
     } else {
       var ch = S.chapters[r.v + '-' + r.c];
       if (!ch) { loadChapter(r.v, r.c); ch = S.chapters[r.v + '-' + r.c]; }
@@ -789,6 +1185,7 @@
 
     app.innerHTML = html;
     initGallery();
+    initFinalPlay();
     if (screen !== lastScreen) {
       lastScreen = screen;
       window.scrollTo(0, 0);
@@ -866,6 +1263,10 @@
 
     if (act.indexOf('snake-') === 0) {
       if (r.name === 'snake' && unlocked(1)) { snakeAction(act, t); }
+      return;
+    }
+    if (act.indexOf('final-') === 0) {
+      if (isFinalRoute() && unlocked(1)) { finalAction(act, t); }
       return;
     }
     if (act === 'news') { return; }

@@ -20,7 +20,7 @@ A WordPress plugin for The Blue Tree. Readers scan the QR code on a printed mind
 | Chapter pictures | One watercolour per branch, found in the Media Library by file name (`v1ch1b1.jpeg` = Volume 1, Chapter 1, Branch 1) and shown as a swipeable strip under the chapter header. See [docs/chapter-illustrations.md](docs/chapter-illustrations.md). |
 | Readers | Kept in the plugin's own tables. They are not WordPress users and get no access to the rest of TBT. |
 | News consent | A separate, unticked box at sign-in. The reader can switch it off on the home screen. The date of consent is stored. |
-| Tracking | None. Exercise answers and Snake viewed-answer progress stay in memory and are gone when the page is closed or reloaded. |
+| Tracking | Only THE FINAL TEST round results (score and the numbers of the questions missed) are saved, per reader, so a reader can stop after a round and come back on any device. Everything else (exercise answers, Snake progress, a Final Test round in progress) stays in memory and is gone when the page is closed or reloaded. Deleting a reader deletes their saved results. |
 
 ## Admin (HTSI HUB)
 
@@ -58,6 +58,7 @@ assets/hub.css, assets/hub.js    the HUB itself (no build step)
 assets/admin-qr.js, assets/vendor  QR code on the Chapters admin page (qrcode-generator, MIT)
 assets/fonts                     Roboto Slab + Roboto Flex, self-hosted
 data/seed.php                    starting content for all 30 chapters
+data/v1-final-test.php           THE FINAL TEST: 100 items for Volume 1
 ```
 
 Fonts are served from the plugin, so no reader data goes to Google Fonts.
@@ -82,3 +83,14 @@ For Complete it, learners say the whole expression; for Make it personal, they c
 ### Snake revision: chapters 07–09
 
 The third revision game appears after chapter 09, before chapter 10, in Volume 1. Route: `#/1/9/snake`; authenticated API: `/snake?v=1&c=9`. Its 42 tasks (14 per chapter) are in `data/v1c7-9-snake.php`, with separate session progress and reset behavior. It reuses the existing HUB styling.
+
+
+## THE FINAL TEST — Volume 1 revision
+
+A row after chapter 10 opens `#/1/10/final` (Volume 1 access required, the same gate as chapter 10). It has 100 short A–B conversations from chapters 1–10, in four rounds of 25: 50 correct replies and 50 incorrect ones (35 wrong-fit, 15 form slips), ten per chapter. Content lives in `data/v1-final-test.php`; the numbering matches the printed page, so learners who work on paper can check in the Key.
+
+- **Play** (`#/1/10/final/play`): the swipe mechanics of TBT Swipe, in the HUB's own look. Swipe up (sage) = Correct, swipe down (amber) = Incorrect; the buttons and the arrow keys do the same. The card then turns over: Right! / Not quite., whether B's reply is correct, the better version and a note. Next (or →) deals the next card.
+- **Saving**: when a round is finished, the browser sends the reader's 25 choices to `POST /final-test/round`; the server works out the score from the data file and stores it in the `htsi_progress` table (one row per reader). A round in progress is not saved. Playing a round again replaces its saved result.
+- **Practice**: after a round, or later from the overview, the reader can replay only the questions they got wrong. Practice is never saved.
+- **Key** (`#/1/10/final/key`): all 100 answers with the better version and the note, open without playing.
+

@@ -1,6 +1,6 @@
 <?php
 /**
- * Database tables: readers, book codes, sessions.
+ * Database tables: readers, book codes, sessions, saved game progress.
  * Readers are kept apart from WordPress users on purpose:
  * a book code never gives access to the rest of the site.
  */
@@ -11,7 +11,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class HTSI_DB {
 
-	const SCHEMA_VERSION = '2';
+	const SCHEMA_VERSION = '3';
 
 	public static function readers() {
 		global $wpdb;
@@ -26,6 +26,12 @@ class HTSI_DB {
 	public static function sessions() {
 		global $wpdb;
 		return $wpdb->prefix . 'htsi_sessions';
+	}
+
+	/** Saved results, one row per reader and game (for example THE FINAL TEST rounds). */
+	public static function progress() {
+		global $wpdb;
+		return $wpdb->prefix . 'htsi_progress';
 	}
 
 	public static function maybe_upgrade() {
@@ -79,6 +85,18 @@ class HTSI_DB {
 			PRIMARY KEY  (id),
 			UNIQUE KEY token_hash (token_hash),
 			KEY reader_id (reader_id)
+		) $charset;"
+		);
+
+		dbDelta(
+			'CREATE TABLE ' . self::progress() . " (
+			id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+			reader_id bigint(20) unsigned NOT NULL,
+			game varchar(40) NOT NULL,
+			data longtext NOT NULL,
+			updated_at datetime NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY reader_game (reader_id,game)
 		) $charset;"
 		);
 
