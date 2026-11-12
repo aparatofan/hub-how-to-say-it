@@ -70,3 +70,10 @@ Volume 1 includes a revision row between chapters 03 and 04, without renumbering
 The 42 tasks use only the blue Useful upgrade target expressions from chapters 1–3 (14 per chapter), alternating Complete it, What would you say?, Say it differently and Make it personal. Content lives in `data/v1c1-3-snake.php`. The phone is a question-and-answer companion to the printed board. Answers start hidden; speaking tasks show model answers. Viewed tiles turn sage. Progress stays only in the current page session, and Reset clears it.
 
 The game inherits the HUB’s self-hosted Roboto Slab / Roboto Flex, blue and sage tokens and native card/button styling. No separate Divi import or external service is required.
+
+
+### Chapters 04–06 revision
+
+A second THE SNAKE row appears after chapter 06 and before chapter 07. Its deep link is `#/1/6/snake`, API request is `/snake?v=1&c=6`, and its approved 42 tasks are in `data/v1c4-6-snake.php` (14 per chapter). Both games share the same HUB styling and controls. Their content caches and viewed-answer progress are separate: switching games or resetting one never changes the other. Both are cleared on sign-out or page reload.
+
+For Complete it, learners say the whole expression; for Make it personal, they complete the requested exchange or explanation.

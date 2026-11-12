@@ -171,10 +171,11 @@ class HTSI_Api {
 			return $open;
 		}
 		list( , , $v, $c ) = $open;
-		if ( 1 !== $v || 3 !== $c ) {
+		if ( 1 !== $v || ! in_array( $c, array( 3, 6 ), true ) ) {
 			return new WP_Error( 'htsi_not_found', 'We cannot find this revision game.', array( 'status' => 404 ) );
 		}
-		return rest_ensure_response( array( 'items' => require HTSI_DIR . 'data/v1c1-3-snake.php' ) );
+		$file = 6 === $c ? 'data/v1c4-6-snake.php' : 'data/v1c1-3-snake.php';
+		return rest_ensure_response( array( 'items' => require HTSI_DIR . $file ) );
 	}
 
 	public static function send_map( WP_REST_Request $req ) {
@@ -207,4 +208,5 @@ class HTSI_Api {
 		return rest_ensure_response( array( 'sent_to' => $reader->email ) );
 	}
 }
+
 
