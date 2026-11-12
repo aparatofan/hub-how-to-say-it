@@ -281,3 +281,33 @@ body.htsi-body {
   .htsi-acc-chev { transition: transform .2s ease; }
   .htsi-dots span { transition: background-color .2s ease; }
 }
+
+
+/* ----- THE SNAKE: native revision screen, using the HUB design tokens ----- */
+.htsi-snake-row { background: var(--sage-tint); }
+#htsi-app .htsi-snake-row .htsi-row-title { font-family: var(--slab); font-weight: 600; }
+.htsi-snake-mark { color: var(--sage-text); }
+.htsi-snake-types { display: flex; flex-wrap: wrap; gap: 8px; }
+.htsi-snake-types span { background: var(--sage-tint); color: var(--sage-ink); border-radius: 10px; padding: 6px 10px; font-size: 12px; font-weight: 500; }
+.htsi-snake-tools { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.htsi-snake-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
+.htsi-snake-tile { min-height: 44px; aspect-ratio: 1; border: 1px solid var(--line-strong); border-radius: 12px; background: var(--card); color: var(--blue); font-size: 23px; font-weight: 400; }
+#htsi-app .htsi-snake-tile { font-family: var(--slab); }
+.htsi-snake-tile:hover { border-color: var(--blue); }
+.htsi-snake-tile.is-seen { background: var(--sage-tint); border-color: var(--sage); color: var(--sage-ink); }
+.htsi-snake-rules summary { cursor: pointer; color: var(--blue); font-weight: 600; min-height: 44px; display: list-item; }
+.htsi-snake-rules[open] > * + * { margin-top: 12px; }
+.htsi-snake-rules ol { padding-left: 20px; margin-bottom: 0; }
+.htsi-snake-rules li + li { margin-top: 8px; }
+.htsi-snake-dialog { padding: 0; border: 1px solid var(--line); border-radius: 20px; background: var(--card); color: var(--ink); font-family: var(--flex); width: calc(100% - 24px); max-width: 440px; max-height: 90vh; max-height: 90dvh; margin: auto; overflow-y: auto; overscroll-behavior: contain; }
+.htsi-snake-dialog::backdrop { background: rgba(16, 37, 100, .65); }
+.htsi-snake-cardhead { display: flex; align-items: center; justify-content: space-between; padding: 12px 18px; background: var(--blue); gap: 12px; }
+#htsi-app .htsi-snake-cardhead h2 { color: white; font-size: 24px; }
+.htsi-snake-cardhead .htsi-link { color: white; }
+.htsi-snake-cardbody { display: flex; flex-direction: column; gap: 18px; padding: 20px; }
+.htsi-snake-question { font-size: 19px; line-height: 1.55; }
+#htsi-app p.htsi-snake-answer { font-size: 18px; font-weight: 600; line-height: 1.5; margin: 10px 0; }
+.htsi-snake-dialog .htsi-btn-ghost:disabled { opacity: .45; cursor: default; }
+@media (max-width: 359px) {
+  .htsi-snake-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+}
