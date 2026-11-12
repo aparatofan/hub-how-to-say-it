@@ -2,7 +2,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
-const source=fs.readFileSync('assets/hub.js','utf8').replace('  boot();', '  window.testAPI = { S, route, viewHome, viewSnake, applyState, render, loadSnake };');
+const source=fs.readFileSync('assets/hub.js','utf8').replace('  boot();', '  window.testAPI = { S, route, viewHome, viewSnake, applyState, render, loadSnake, snakeAction };');
 const php=fs.readFileSync('data/v1c1-3-snake.php','utf8');
 const items=JSON.parse(php.split("<<<'JSON'\n")[1].split('\nJSON\n')[0]);
 function setup(hash='#/',reader={name:'Test',email:'test@example.test',volumes:[1]}) {
@@ -33,19 +33,57 @@ test('locked Volume 1 has no actionable game link',()=>{
 });
 test('snake deep link is routed independently of chapter 3',()=>{
  const {a}=setup('#/1/3/snake');assert.equal(a.route().name,'snake');
- a.S.snake={items};a.render();assert.equal((a.viewSnake().match(/data-act="snake-open"/g)||[]).length,42);
+ a.S.snake={3:{items}};a.render();assert.equal((a.viewSnake().match(/data-act="snake-open"/g)||[]).length,42);
  assert.ok(!a.S.chapters['1-3']);
 });
 test('signed-out deep link prompts sign-in; locked deep link offers volume unlock',()=>{
  const signedOut=setup('#/1/3/snake',null);signedOut.a.render();assert.ok(signedOut.app.innerHTML.includes('data-form="login"'));
- const locked=setup('#/1/3/snake',{volumes:[2]});locked.a.render();assert.ok(locked.app.innerHTML.includes('data-form="unlock"'));assert.equal(locked.a.S.snake,null);
+ const locked=setup('#/1/3/snake',{volumes:[2]});locked.a.render();assert.ok(locked.app.innerHTML.includes('data-form="unlock"'));assert.equal(Object.keys(locked.a.S.snake).length,0);
 });
 test('logout clears game data and progress',()=>{
- const {a}=setup();a.S.snake={items};a.S.snakeSeen={1:true};a.applyState({});assert.equal(a.S.snake,null);assert.equal(Object.keys(a.S.snakeSeen).length,0);
+ const {a}=setup();a.S.snake={3:{items}};a.S.snakeSeen={3:{1:true},6:{2:true}};a.applyState({});assert.equal(Object.keys(a.S.snake).length,0);assert.equal(Object.keys(a.S.snakeSeen).length,0);
 });
-test('load error exposes a retry action',()=>{const {a}=setup();a.S.snake={error:'Offline'};assert.ok(a.viewSnake().includes('data-act="snake-retry"'));});
+test('load error exposes a retry action',()=>{const {a}=setup('#/1/3/snake');a.S.snake={3:{error:'Offline'}};assert.ok(a.viewSnake().includes('data-act="snake-retry"'));});
 test('late API reply cannot restore game data after logout',async()=>{
  const {a,context}=setup('#/1/3/snake');let resolve;
- context.fetch=()=>new Promise(r=>{resolve=r});a.loadSnake();a.applyState({});
- resolve({ok:true,json:async()=>({items})});await new Promise(r=>setImmediate(r));assert.equal(a.S.snake,null);
+ context.fetch=()=>new Promise(r=>{resolve=r});a.loadSnake(3);a.applyState({});
+ resolve({ok:true,json:async()=>({items})});await new Promise(r=>setImmediate(r));assert.equal(Object.keys(a.S.snake).length,0);
+});
+
+
+const items46=JSON.parse(fs.readFileSync('data/v1c4-6-snake.php','utf8').split("<<<'JSON'\n")[1].split('\nJSON\n')[0]);
+test('new game contains 42 numbered tasks, 14 each from chapters 4–6',()=>{
+ assert.equal(items46.length,42);assert.deepEqual(items46.map(i=>i.n),Array.from({length:42},(_,i)=>i+1));
+ for(const ch of [4,5,6])assert.equal(items46.filter(i=>i.ch===ch).length,14);
+ assert.equal(new Set(items46.map(i=>i.tl)).size,4);assert.equal(new Set(items46.map(i=>i.a)).size,42);
+ for(const i of items46)assert.ok(i.q&&i.a&&i.note);
+});
+test('second revision row is between 06 and 07, with both games visible',()=>{
+ const {a}=setup();const html=a.viewHome();
+ assert.ok(html.indexOf('href="#/1/6"')<html.indexOf('href="#/1/6/snake"'));
+ assert.ok(html.indexOf('href="#/1/6/snake"')<html.indexOf('href="#/1/7"'));
+ assert.equal((html.match(/class="htsi-row htsi-snake-row"/g)||[]).length,2);
+ assert.ok(html.includes('Chapters 04–06'));assert.ok(html.includes('Chapters 01–03'));
+ a.S.vol=2;assert.ok(!a.viewHome().includes('THE SNAKE'));
+});
+test('each route renders its own title, data and independent progress',()=>{
+ const {a,context}=setup('#/1/6/snake');a.S.snake={3:{items},6:{items:items46}};a.S.snakeSeen={3:{1:true},6:{2:true,3:true}};
+ assert.equal(a.route().name,'snake');assert.ok(a.viewSnake().includes('Chapters 04–06'));assert.ok(a.viewSnake().includes('2 / 42 answers viewed'));
+ context.location.hash='#/1/3/snake';assert.ok(a.viewSnake().includes('Chapters 01–03'));assert.ok(a.viewSnake().includes('1 / 42 answers viewed'));
+});
+test('reset clears only the active game',()=>{
+ const {a,app,context}=setup('#/1/6/snake');a.S.snake={3:{items},6:{items:items46}};a.S.snakeSeen={3:{1:true},6:{2:true}};
+ context.window.confirm=()=>true;app.querySelector=selector=>selector.includes('snake-reset')?{focus(){}}:null;a.snakeAction('snake-reset',{});
+ assert.equal(Object.keys(a.S.snakeSeen[6]).length,0);assert.equal(a.S.snakeSeen[3][1],true);
+});
+test('second game deep link respects sign-in and Volume 1 access',()=>{
+ for(const reader of [null,{volumes:[2]}]){const {a,app}=setup('#/1/6/snake',reader);a.render();assert.equal(Object.keys(a.S.snake).length,0);assert.ok(!app.innerHTML.includes('data-act="snake-open"'));}
+});
+test('out-of-order API responses stay assigned to the correct game',async()=>{
+ const {a,context}=setup('#/1/6/snake');const pending={};context.fetch=url=>new Promise(resolve=>{pending[url]=resolve});
+ a.loadSnake(3);a.loadSnake(6);
+ pending['/api/snake?v=1&c=6']({ok:true,json:async()=>({items:items46})});await new Promise(r=>setImmediate(r));
+ pending['/api/snake?v=1&c=3']({ok:true,json:async()=>({items})});await new Promise(r=>setImmediate(r));
+ assert.equal(a.S.snake[6].items[0].ch,4);assert.equal(a.S.snake[3].items[0].ch,1);
+ assert.ok(a.viewSnake().includes('Chapters 04–06'));
 });
