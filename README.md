@@ -20,7 +20,7 @@ A WordPress plugin for The Blue Tree. Readers scan the QR code on a printed mind
 | Chapter pictures | One watercolour per branch, found in the Media Library by file name (`v1ch1b1.jpeg` = Volume 1, Chapter 1, Branch 1) and shown as a swipeable strip under the chapter header. See [docs/chapter-illustrations.md](docs/chapter-illustrations.md). |
 | Readers | Kept in the plugin's own tables. They are not WordPress users and get no access to the rest of TBT. |
 | News consent | A separate, unticked box at sign-in. The reader can switch it off on the home screen. The date of consent is stored. |
-| Tracking | None. Exercise answers stay in the browser and are gone when the page is closed. |
+| Tracking | None. Exercise answers and Snake viewed-answer progress stay in memory and are gone when the page is closed or reloaded. |
 
 ## Admin (HTSI HUB)
 
@@ -61,3 +61,12 @@ data/seed.php                    starting content for all 30 chapters
 ```
 
 Fonts are served from the plugin, so no reader data goes to Google Fonts.
+
+
+## THE SNAKE — revision game
+
+Volume 1 includes a revision row between chapters 03 and 04, without renumbering the ten chapters. It opens `#/1/3/snake` and requires Volume 1 access, including when opened directly from a QR code. The `/snake?v=1&c=3` API uses the chapter reader/volume gate.
+
+The 42 tasks use only the blue Useful upgrade target expressions from chapters 1–3 (14 per chapter), alternating Complete it, What would you say?, Say it differently and Make it personal. Content lives in `data/v1c1-3-snake.php`. The phone is a question-and-answer companion to the printed board. Answers start hidden; speaking tasks show model answers. Viewed tiles turn sage. Progress stays only in the current page session, and Reset clears it.
+
+The game inherits the HUB’s self-hosted Roboto Slab / Roboto Flex, blue and sage tokens and native card/button styling. No separate Divi import or external service is required.

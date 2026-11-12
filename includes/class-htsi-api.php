@@ -20,6 +20,7 @@ class HTSI_Api {
 		$post = array( __CLASS__, 'check_post' );
 		register_rest_route( self::NS, '/state', array( 'methods' => 'GET', 'callback' => array( __CLASS__, 'state' ), 'permission_callback' => '__return_true' ) );
 		register_rest_route( self::NS, '/chapter', array( 'methods' => 'GET', 'callback' => array( __CLASS__, 'chapter' ), 'permission_callback' => '__return_true' ) );
+		register_rest_route( self::NS, '/snake', array( 'methods' => 'GET', 'callback' => array( __CLASS__, 'snake' ), 'permission_callback' => '__return_true' ) );
 		register_rest_route( self::NS, '/login', array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'login' ), 'permission_callback' => $post ) );
 		register_rest_route( self::NS, '/unlock', array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'unlock' ), 'permission_callback' => $post ) );
 		register_rest_route( self::NS, '/logout', array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'logout' ), 'permission_callback' => $post ) );
@@ -163,6 +164,19 @@ class HTSI_Api {
 		);
 	}
 
+	/** Revision game uses the same reader and volume checks as chapter content. */
+	public static function snake( WP_REST_Request $req ) {
+		$open = self::open_chapter( $req );
+		if ( is_wp_error( $open ) ) {
+			return $open;
+		}
+		list( , , $v, $c ) = $open;
+		if ( 1 !== $v || 3 !== $c ) {
+			return new WP_Error( 'htsi_not_found', 'We cannot find this revision game.', array( 'status' => 404 ) );
+		}
+		return rest_ensure_response( array( 'items' => require HTSI_DIR . 'data/v1c1-3-snake.php' ) );
+	}
+
 	public static function send_map( WP_REST_Request $req ) {
 		$open = self::open_chapter( $req );
 		if ( is_wp_error( $open ) ) {
@@ -193,3 +207,4 @@ class HTSI_Api {
 		return rest_ensure_response( array( 'sent_to' => $reader->email ) );
 	}
 }
+

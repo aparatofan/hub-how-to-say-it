@@ -17,6 +17,8 @@
     mapSent: {},      // "v-c" -> email address, or {error}
     open: {},         // "v-c" -> which chapter sections are open (all closed at first)
     slide: {},        // "v-c" -> index of the picture shown in the chapter's picture strip
+    snake: null,      // Volume 1 revision content, loaded through the authenticated API
+    snakeSeen: {},    // Answers viewed during this page session only
     busy: false
   };
 
@@ -93,6 +95,7 @@
     var p = (location.hash || '').replace(/^#\/?/, '').split('/');
     var v = parseInt(p[0], 10), c = parseInt(p[1], 10);
     if (!(v >= 1 && v <= 3 && c >= 1 && c <= 10)) { return { name: 'home' }; }
+    if (v === 1 && c === 3 && p[2] === 'snake') { return { name: 'snake', v: v, c: c }; }
     if (p[2] === 'ex' && /^\d+$/.test(p[3] || '')) { return { name: 'ex', v: v, c: c, i: parseInt(p[3], 10) }; }
     if (p[2] === 'key') { return { name: 'key', v: v, c: c, i: /^\d+$/.test(p[3] || '') ? parseInt(p[3], 10) : 0 }; }
     return { name: 'chapter', v: v, c: c };
@@ -119,7 +122,7 @@
   function applyState(data) {
     S.reader = data.reader || null;
     S.volumes = data.volumes || [];
-    if (!S.reader) { S.chapters = {}; S.work = {}; S.mapSent = {}; S.open = {}; S.slide = {}; }
+    if (!S.reader) { S.chapters = {}; S.work = {}; S.mapSent = {}; S.open = {}; S.slide = {}; S.snake = null; S.snakeSeen = {}; }
   }
 
   function loadChapter(v, c) {
@@ -136,6 +139,110 @@
     });
   }
 
+  /* ---------- snake revision ---------- */
+
+  function snakeRow(open) {
+    var body = '<span class="htsi-row-num htsi-snake-mark" aria-hidden="true">↝</span>' +
+      '<span class="htsi-row-main"><span class="htsi-row-title">THE SNAKE</span>' +
+      '<span class="htsi-row-sub">Revision game · Chapters 01–03 · 42 questions</span></span>';
+    return open
+      ? '<a class="htsi-row htsi-snake-row" href="#/1/3/snake">' + body + '<span class="htsi-row-end">' + ICON.right + '</span></a>'
+      : '<div class="htsi-row htsi-snake-row is-off">' + body + '<span aria-label="Volume locked">' + ICON.lock + '</span></div>';
+  }
+
+  function loadSnake() {
+    if (S.snake) { return; }
+    S.snake = { loading: true };
+    var reader = S.reader;
+    api('GET', '/snake?v=1&c=3').then(function (data) {
+      if (S.reader !== reader) { return; }
+      S.snake = data && Array.isArray(data.items) && data.items.length === 42
+        ? data : { error: 'The game could not be loaded. Please try again.' };
+      if (route().name === 'snake') { render(); }
+    }, function (err) {
+      if (S.reader !== reader) { return; }
+      if (err.status === 401) { applyState({}); render(); return; }
+      S.snake = { error: err.message };
+      if (route().name === 'snake') { render(); }
+    });
+  }
+
+  function viewSnake() {
+    if (!S.snake) { loadSnake(); }
+    var header = '<div class="htsi-exhead"><a class="htsi-back" href="#/">' + ICON.left + 'All chapters</a>' +
+      '<div class="htsi-eyebrow">Volume 1 · Chapters 01–03</div><h1>THE SNAKE</h1>' +
+      '<div class="htsi-rule"></div><p>Revision game · Reflect, remember, recycle.</p></div>';
+    if (S.snake.loading) { return '<div class="htsi-screen">' + header + viewLoading('Loading the game…') + '</div>'; }
+    if (S.snake.error) { return '<div class="htsi-screen">' + header + '<div class="htsi-exbody"><p class="htsi-error" role="alert">' + esc(S.snake.error) + '</p><button class="htsi-btn" data-act="snake-retry">Try again</button></div></div>'; }
+    var tiles = S.snake.items.map(function (item, i) {
+      return '<button type="button" class="htsi-snake-tile' + (S.snakeSeen[item.n] ? ' is-seen' : '') + '" data-act="snake-open" data-i="' + i + '" aria-label="Tile ' + item.n + ', ' + esc(item.tl) + (S.snakeSeen[item.n] ? ', answer viewed' : '') + '">' + item.n + '</button>';
+    }).join('');
+    return '<div class="htsi-screen">' + header + '<div class="htsi-exbody">' +
+      '<p class="htsi-muted">Tap your board number. Answer aloud, then check together.</p>' +
+      '<details class="htsi-card htsi-snake-rules"><summary>How to play / Zasady gry</summary>' +
+        '<p>2–6 players or teams. Use the printed snake board, a die and counters. Start before tile 1.</p>' +
+        '<ol><li>Roll, move and tap your tile number.</li><li>Read the task aloud and answer using a blue “Useful upgrade” expression.</li><li>Reveal the answer. Correct: stay. Incorrect: move back one tile, without answering again.</li><li>A roll reaching or passing 42 takes you to 42. Complete that task successfully to win.</li></ol>' +
+        '<p>Speaking tasks show a model, not the only possible answer. Use your own details and accept appropriate blue expressions.</p>' +
+        '<p lang="pl">Rzuć kostką i wybierz numer pola. Odpowiedz na głos, potem odsłoń odpowiedź. Dobra odpowiedź: zostajesz. Błędna: cofasz się o jedno pole (najdalej do startu). Aby wygrać, wykonaj poprawnie zadanie 42. W zadaniach otwartych użyj własnych szczegółów.</p></details>' +
+      '<div class="htsi-snake-types" aria-label="Four task types"><span>Complete it</span><span>What would you say?</span><span>Say it differently</span><span>Make it personal</span></div>' +
+      '<div class="htsi-snake-tools"><span class="htsi-small htsi-muted" data-snake-progress aria-live="polite">' + Object.keys(S.snakeSeen).length + ' / 42 answers viewed</span>' +
+        '<button type="button" class="htsi-link" data-act="snake-reset">Reset</button></div>' +
+      '<div class="htsi-snake-grid" aria-label="Choose a tile">' + tiles + '</div>' +
+      '<p class="htsi-small htsi-muted">Sage tiles have a viewed answer. Progress lasts until you close or reload this page.</p>' +
+      '<div class="htsi-card"><h2>One last conversation</h2><p>Choose three expressions you found difficult and use them in a new conversation.</p></div>' +
+      '<dialog class="htsi-snake-dialog" aria-labelledby="htsi-snake-title"><div data-snake-card></div></dialog></div></div>';
+  }
+
+  var snakeIndex = 0, snakeOpener = null;
+  function snakeCard(i) {
+    var item = S.snake && S.snake.items && S.snake.items[i];
+    if (!item) { return; }
+    snakeIndex = i;
+    var dialog = app.querySelector('.htsi-snake-dialog');
+    dialog.querySelector('[data-snake-card]').innerHTML =
+      '<div class="htsi-snake-cardhead"><h2 id="htsi-snake-title">Tile ' + item.n + '</h2><button type="button" class="htsi-link" data-act="snake-close" aria-label="Close question">Close ×</button></div>' +
+      '<div class="htsi-snake-cardbody"><p class="htsi-small htsi-muted">Chapter ' + item.ch + ' · ' + esc(item.tl) + '</p>' +
+      '<p class="htsi-snake-question">' + esc(item.q) + '</p>' +
+      '<button type="button" class="htsi-btn" data-act="snake-reveal" aria-expanded="false" aria-controls="htsi-snake-answer">Show answer</button>' +
+      '<div id="htsi-snake-answer" class="htsi-suggest" hidden><strong>' + (item.t === 0 ? 'Answer' : 'Model answer') + '</strong><p class="htsi-snake-answer">' + esc(item.a) + '</p><p>' + esc(item.note) + '</p></div>' +
+      '<div class="htsi-exnav"><button type="button" class="htsi-btn-ghost" data-act="snake-prev"' + (i === 0 ? ' disabled' : '') + '>Previous</button><button type="button" class="htsi-btn-ghost" data-act="snake-next"' + (i === 41 ? ' disabled' : '') + '>Next</button></div></div>';
+    dialog.scrollTop = 0;
+  }
+
+  function snakeAction(act, t) {
+    if (act === 'snake-retry') { S.snake = null; render(); return; }
+    if (!S.snake || !S.snake.items) { return; }
+    var dialog = app.querySelector('.htsi-snake-dialog');
+    if (act === 'snake-open') {
+      snakeOpener = t;
+      snakeCard(parseInt(t.getAttribute('data-i'), 10));
+      dialog.showModal();
+      dialog.onclose = function () { if (snakeOpener && app.contains(snakeOpener)) { snakeOpener.focus({ preventScroll: true }); } };
+      dialog.querySelector('[data-act="snake-close"]').focus();
+    } else if (act === 'snake-close') {
+      dialog.close();
+    } else if (act === 'snake-next' || act === 'snake-prev') {
+      snakeCard(snakeIndex + (act === 'snake-next' ? 1 : -1));
+      dialog.querySelector('[data-act="snake-reveal"]').focus();
+    } else if (act === 'snake-reveal') {
+      var item = S.snake.items[snakeIndex];
+      dialog.querySelector('#htsi-snake-answer').hidden = false;
+      t.setAttribute('aria-expanded', 'true');
+      t.textContent = 'Answer shown';
+      S.snakeSeen[item.n] = true;
+      var tile = app.querySelector('[data-act="snake-open"][data-i="' + snakeIndex + '"]');
+      tile.classList.add('is-seen');
+      tile.setAttribute('aria-label', 'Tile ' + item.n + ', ' + item.tl + ', answer viewed');
+      app.querySelector('[data-snake-progress]').textContent = Object.keys(S.snakeSeen).length + ' / 42 answers viewed';
+    } else if (act === 'snake-reset') {
+      if (window.confirm('Reset viewed answers for this game?')) {
+        S.snakeSeen = {};
+        render();
+        app.querySelector('[data-act="snake-reset"]').focus({ preventScroll: true });
+      }
+    }
+  }
+
   /* ---------- screens ---------- */
 
   function viewLoading(text) {
@@ -146,7 +253,8 @@
     var chip = '';
     if (r.v) {
       var o = outline(r.v, r.c);
-      if (o) { chip = '<div class="htsi-chip">Volume ' + r.v + ' · Chapter ' + r.c + ' · ' + esc(o.title) + '</div>'; }
+      if (r.name === 'snake') { chip = '<div class="htsi-chip">Volume 1 · THE SNAKE · Revision of Chapters 1–3</div>'; }
+      else if (o) { chip = '<div class="htsi-chip">Volume ' + r.v + ' · Chapter ' + r.c + ' · ' + esc(o.title) + '</div>'; }
     }
     var privacy = safeUrl(C.privacy) ? ' <a href="' + esc(C.privacy) + '" target="_blank" rel="noopener">Privacy policy</a>' : '';
     return '<div class="htsi-screen htsi-login">' +
@@ -194,16 +302,17 @@
     }).join('');
 
     var rows = vol.chapters.map(function (o) {
+      var revision = vol.n === 1 && o.n === 3 ? snakeRow(open) : '';
       var num = (o.n < 10 ? '0' : '') + o.n;
       var status = chapterStatus(o);
       if (open && status) {
         return '<a class="htsi-row" href="#/' + vol.n + '/' + o.n + '"><span class="htsi-row-num">' + num + '</span>' +
           '<span class="htsi-row-main"><span class="htsi-row-title">' + esc(o.title) + '</span><span class="htsi-row-sub">' + esc(status) + '</span></span>' +
-          '<span style="color:var(--blue)">' + ICON.right + '</span></a>';
+          '<span style="color:var(--blue)">' + ICON.right + '</span></a>' + revision;
       }
       return '<div class="htsi-row is-off"><span class="htsi-row-num">' + num + '</span>' +
         '<span class="htsi-row-main"><span class="htsi-row-title">' + esc(o.title) + '</span>' +
-        (open ? '<span class="htsi-row-sub">Coming soon</span>' : '') + '</span></div>';
+        (open ? '<span class="htsi-row-sub">Coming soon</span>' : '') + '</span></div>' + revision;
     }).join('');
 
     var unlock = '';
@@ -649,6 +758,8 @@
       S.vol = r.v;
       html = viewHome();
       screen = 'home-locked';
+    } else if (r.name === 'snake') {
+      html = viewSnake();
     } else {
       var ch = S.chapters[r.v + '-' + r.c];
       if (!ch) { loadChapter(r.v, r.c); ch = S.chapters[r.v + '-' + r.c]; }
@@ -742,6 +853,10 @@
     var r = route();
     var ch, e, w;
 
+    if (act.indexOf('snake-') === 0) {
+      if (r.name === 'snake' && unlocked(1)) { snakeAction(act, t); }
+      return;
+    }
     if (act === 'news') { return; }
     if (act === 'reload') { boot(); return; }
     if (act === 'vol') { S.vol = parseInt(t.getAttribute('data-n'), 10); if (r.name !== 'home') { lastScreen = ''; location.hash = '#/'; } else { render(); } return; }
@@ -817,3 +932,4 @@
 
   boot();
 })();
+
