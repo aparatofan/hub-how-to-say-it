@@ -21,6 +21,8 @@ class HTSI_Api {
 		register_rest_route( self::NS, '/state', array( 'methods' => 'GET', 'callback' => array( __CLASS__, 'state' ), 'permission_callback' => '__return_true' ) );
 		register_rest_route( self::NS, '/chapter', array( 'methods' => 'GET', 'callback' => array( __CLASS__, 'chapter' ), 'permission_callback' => '__return_true' ) );
 		register_rest_route( self::NS, '/snake', array( 'methods' => 'GET', 'callback' => array( __CLASS__, 'snake' ), 'permission_callback' => '__return_true' ) );
+		register_rest_route( self::NS, '/final-test', array( 'methods' => 'GET', 'callback' => array( __CLASS__, 'final_test' ), 'permission_callback' => '__return_true' ) );
+		register_rest_route( self::NS, '/final-test/round', array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'final_round' ), 'permission_callback' => $post ) );
 		register_rest_route( self::NS, '/login', array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'login' ), 'permission_callback' => $post ) );
 		register_rest_route( self::NS, '/unlock', array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'unlock' ), 'permission_callback' => $post ) );
 		register_rest_route( self::NS, '/logout', array( 'methods' => 'POST', 'callback' => array( __CLASS__, 'logout' ), 'permission_callback' => $post ) );
@@ -177,6 +179,107 @@ class HTSI_Api {
 		$files = array( 3 => 'data/v1c1-3-snake.php', 6 => 'data/v1c4-6-snake.php', 9 => 'data/v1c7-9-snake.php' );
 		$file = $files[ $c ];
 		return rest_ensure_response( array( 'items' => require HTSI_DIR . $file ) );
+	}
+
+	/* ---------- THE FINAL TEST (Volume 1, after Chapter 10) ---------- */
+
+	const FINAL_GAME = 'v1-final-test';
+
+	/** The reader must be signed in and have Volume 1, the same gate as Chapter 10. */
+	private static function open_final( WP_REST_Request $req ) {
+		$req->set_param( 'v', 1 );
+		$req->set_param( 'c', 10 );
+		return self::open_chapter( $req );
+	}
+
+	private static function final_items() {
+		$items = require HTSI_DIR . 'data/v1-final-test.php';
+		return is_array( $items ) ? $items : array();
+	}
+
+	/** Saved rounds: { "1": { score, total, wrong: [n…], at }, … }. Only finished rounds are stored. */
+	private static function final_progress( $reader_id ) {
+		global $wpdb;
+		$raw = $wpdb->get_var(
+			$wpdb->prepare( 'SELECT data FROM ' . HTSI_DB::progress() . ' WHERE reader_id = %d AND game = %s', $reader_id, self::FINAL_GAME )
+		);
+		$data = $raw ? json_decode( $raw, true ) : null;
+		$rounds = is_array( $data ) && isset( $data['rounds'] ) && is_array( $data['rounds'] ) ? $data['rounds'] : array();
+		return (object) $rounds;
+	}
+
+	public static function final_test( WP_REST_Request $req ) {
+		$open = self::open_final( $req );
+		if ( is_wp_error( $open ) ) {
+			return $open;
+		}
+		list( $reader ) = $open;
+		return rest_ensure_response(
+			array(
+				'items'    => self::final_items(),
+				'progress' => self::final_progress( $reader->id ),
+			)
+		);
+	}
+
+	/**
+	 * Save one finished round. The browser sends the reader's choice for every
+	 * item in the round (true = "correct"); the score is worked out here, from
+	 * the data file, so a changed request cannot change it.
+	 */
+	public static function final_round( WP_REST_Request $req ) {
+		global $wpdb;
+		$open = self::open_final( $req );
+		if ( is_wp_error( $open ) ) {
+			return $open;
+		}
+		list( $reader ) = $open;
+		$round   = (int) $req->get_param( 'round' );
+		$answers = $req->get_param( 'answers' );
+		if ( $round < 1 || $round > 4 || ! is_array( $answers ) ) {
+			return new WP_Error( 'htsi_bad_round', 'We could not save this round. Please try again.', array( 'status' => 400 ) );
+		}
+		$score = 0;
+		$wrong = array();
+		$total = 0;
+		foreach ( self::final_items() as $item ) {
+			if ( (int) $item['r'] !== $round ) {
+				continue;
+			}
+			$total++;
+			$key = (string) $item['n'];
+			if ( ! array_key_exists( $key, $answers ) || ! is_bool( $answers[ $key ] ) ) {
+				return new WP_Error( 'htsi_bad_round', 'We could not save this round. Please try again.', array( 'status' => 400 ) );
+			}
+			if ( $answers[ $key ] === (bool) $item['ok'] ) {
+				$score++;
+			} else {
+				$wrong[] = (int) $item['n'];
+			}
+		}
+		if ( count( $answers ) !== $total ) {
+			return new WP_Error( 'htsi_bad_round', 'We could not save this round. Please try again.', array( 'status' => 400 ) );
+		}
+
+		$rounds = (array) self::final_progress( $reader->id );
+		$rounds[ (string) $round ] = array(
+			'score' => $score,
+			'total' => $total,
+			'wrong' => $wrong,
+			'at'    => gmdate( 'c' ),
+		);
+		$json = wp_json_encode( array( 'rounds' => $rounds ) );
+		$now  = HTSI_DB::now();
+		$wpdb->query(
+			$wpdb->prepare(
+				'INSERT INTO ' . HTSI_DB::progress() . ' (reader_id, game, data, updated_at) VALUES (%d, %s, %s, %s) ON DUPLICATE KEY UPDATE data = VALUES(data), updated_at = VALUES(updated_at)',
+				$reader->id,
+				self::FINAL_GAME,
+				$json,
+				$now
+			)
+		);
+		return rest_ensure_response( array( 'progress' => (object) $rounds ) );
 	}
 
 	public static function send_map( WP_REST_Request $req ) {

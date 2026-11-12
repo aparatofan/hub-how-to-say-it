@@ -358,6 +358,7 @@ class HTSI_Admin {
 		$id = isset( $_GET['id'] ) ? (int) $_GET['id'] : 0;
 		if ( $id ) {
 			$wpdb->delete( HTSI_DB::sessions(), array( 'reader_id' => $id ) );
+			$wpdb->delete( HTSI_DB::progress(), array( 'reader_id' => $id ) );
 			$wpdb->update( HTSI_DB::codes(), array( 'reader_id' => null, 'claimed_at' => null ), array( 'reader_id' => $id ) );
 			$wpdb->delete( HTSI_DB::readers(), array( 'id' => $id ) );
 		}
