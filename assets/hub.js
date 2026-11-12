@@ -95,7 +95,7 @@
     var p = (location.hash || '').replace(/^#\/?/, '').split('/');
     var v = parseInt(p[0], 10), c = parseInt(p[1], 10);
     if (!(v >= 1 && v <= 3 && c >= 1 && c <= 10)) { return { name: 'home' }; }
-    if (v === 1 && (c === 3 || c === 6) && p[2] === 'snake') { return { name: 'snake', v: v, c: c }; }
+    if (v === 1 && (c === 3 || c === 6 || c === 9) && p[2] === 'snake') { return { name: 'snake', v: v, c: c }; }
     if (p[2] === 'ex' && /^\d+$/.test(p[3] || '')) { return { name: 'ex', v: v, c: c, i: parseInt(p[3], 10) }; }
     if (p[2] === 'key') { return { name: 'key', v: v, c: c, i: /^\d+$/.test(p[3] || '') ? parseInt(p[3], 10) : 0 }; }
     return { name: 'chapter', v: v, c: c };
@@ -141,7 +141,7 @@
 
   /* ---------- snake revision ---------- */
 
-  function snakeRange(c) { return c === 6 ? '04–06' : '01–03'; }
+  function snakeRange(c) { return c === 9 ? '07–09' : c === 6 ? '04–06' : '01–03'; }
 
   function snakeProgress(c) {
     if (!S.snakeSeen[c]) { S.snakeSeen[c] = {}; }
@@ -313,7 +313,7 @@
     }).join('');
 
     var rows = vol.chapters.map(function (o) {
-      var revision = vol.n === 1 && (o.n === 3 || o.n === 6) ? snakeRow(open, o.n) : '';
+      var revision = vol.n === 1 && (o.n === 3 || o.n === 6 || o.n === 9) ? snakeRow(open, o.n) : '';
       var num = (o.n < 10 ? '0' : '') + o.n;
       var status = chapterStatus(o);
       if (open && status) {
@@ -943,5 +943,6 @@
 
   boot();
 })();
+
 
 

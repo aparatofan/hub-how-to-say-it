@@ -62,7 +62,7 @@ test('second revision row is between 06 and 07, with both games visible',()=>{
  const {a}=setup();const html=a.viewHome();
  assert.ok(html.indexOf('href="#/1/6"')<html.indexOf('href="#/1/6/snake"'));
  assert.ok(html.indexOf('href="#/1/6/snake"')<html.indexOf('href="#/1/7"'));
- assert.equal((html.match(/class="htsi-row htsi-snake-row"/g)||[]).length,2);
+ assert.equal((html.match(/class="htsi-row htsi-snake-row"/g)||[]).length,3);
  assert.ok(html.includes('Chapters 04–06'));assert.ok(html.includes('Chapters 01–03'));
  a.S.vol=2;assert.ok(!a.viewHome().includes('THE SNAKE'));
 });
@@ -86,4 +86,37 @@ test('out-of-order API responses stay assigned to the correct game',async()=>{
  pending['/api/snake?v=1&c=3']({ok:true,json:async()=>({items})});await new Promise(r=>setImmediate(r));
  assert.equal(a.S.snake[6].items[0].ch,4);assert.equal(a.S.snake[3].items[0].ch,1);
  assert.ok(a.viewSnake().includes('Chapters 04–06'));
+});
+
+const items79=JSON.parse(fs.readFileSync('data/v1c7-9-snake.php','utf8').split("<<<'JSON'\n")[1].split('\nJSON\n')[0]);
+test('third game has 42 tasks, balanced chapters and types',()=>{
+ assert.deepEqual(items79.map(i=>i.n),Array.from({length:42},(_,i)=>i+1));
+ for(const ch of [7,8,9])assert.equal(items79.filter(i=>i.ch===ch).length,14);
+ assert.deepEqual([0,1,2,3].map(t=>items79.filter(i=>i.t===t).length),[11,11,10,10]);
+ for(const i of items79)assert.ok(i.q&&i.a&&i.note);
+});
+test('third row is between 09 and 10 and routes to 07–09',()=>{
+ const {a}=setup('#/1/9/snake');const html=a.viewHome();
+ assert.ok(html.indexOf('href="#/1/9"')<html.indexOf('href="#/1/9/snake"'));
+ assert.ok(html.indexOf('href="#/1/9/snake"')<html.indexOf('href="#/1/10"'));
+ assert.equal(a.route().name,'snake');a.S.snake={9:{items:items79}};
+ assert.ok(a.viewSnake().includes('Chapters 07–09'));
+ assert.equal((a.viewSnake().match(/data-act="snake-open"/g)||[]).length,42);
+});
+test('third game reset preserves both earlier games',()=>{
+ const {a,app,context}=setup('#/1/9/snake');a.S.snake={9:{items:items79}};
+ a.S.snakeSeen={3:{1:true},6:{2:true},9:{3:true}};
+ context.window.confirm=()=>true;app.querySelector=s=>s.includes('snake-reset')?{focus(){}}:null;
+ a.snakeAction('snake-reset',{});
+ assert.equal(Object.keys(a.S.snakeSeen[9]).length,0);assert.ok(a.S.snakeSeen[3][1]);assert.ok(a.S.snakeSeen[6][2]);
+});
+test('third game deep link retains access gating',()=>{
+ for(const reader of [null,{volumes:[2]}]){const {a,app}=setup('#/1/9/snake',reader);a.render();assert.equal(Object.keys(a.S.snake).length,0);assert.ok(!app.innerHTML.includes('data-act="snake-open"'));}
+});
+test('third game requests its own API data',async()=>{
+ const {a,context}=setup('#/1/9/snake');let requested;
+ context.fetch=async url=>{requested=url;return {ok:true,json:async()=>({items:items79})}};
+ a.loadSnake(9);await new Promise(r=>setImmediate(r));
+ assert.equal(requested,'/api/snake?v=1&c=9');assert.equal(a.S.snake[9].items[0].ch,7);
+ assert.ok(a.viewSnake().includes('Chapters 07–09'));
 });

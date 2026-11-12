@@ -77,3 +77,8 @@ The game inherits the HUB’s self-hosted Roboto Slab / Roboto Flex, blue and sa
 A second THE SNAKE row appears after chapter 06 and before chapter 07. Its deep link is `#/1/6/snake`, API request is `/snake?v=1&c=6`, and its approved 42 tasks are in `data/v1c4-6-snake.php` (14 per chapter). Both games share the same HUB styling and controls. Their content caches and viewed-answer progress are separate: switching games or resetting one never changes the other. Both are cleared on sign-out or page reload.
 
 For Complete it, learners say the whole expression; for Make it personal, they complete the requested exchange or explanation.
+
+
+### Snake revision: chapters 07–09
+
+The third revision game appears after chapter 09, before chapter 10, in Volume 1. Route: `#/1/9/snake`; authenticated API: `/snake?v=1&c=9`. Its 42 tasks (14 per chapter) are in `data/v1c7-9-snake.php`, with separate session progress and reset behavior. It reuses the existing HUB styling.
