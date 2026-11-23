@@ -109,7 +109,7 @@ No new tables, no new options, no change to the seed.
 
 ## Out of scope for now
 
-- Pictures on the welcome page or next to the rows in "Play Fill".
+- Pictures on the welcome page or next to the rows in "Play The Chase".
 - Tapping a picture to open it full screen.
 - Choosing a picture by hand in the admin instead of by file name.
 
@@ -119,7 +119,7 @@ No new tables, no new options, no change to the seed.
 - [ ] Upload one more (`v1ch1b2`): it appears in second place after a reload, without touching the HUB admin.
 - [ ] A chapter with no pictures looks exactly as before.
 - [ ] A chapter with one picture: no dots, no swiping.
-- [ ] Swipe to picture 3, open and close "Play Fill": still on picture 3.
+- [ ] Swipe to picture 3, open and close "Play The Chase": still on picture 3.
 - [ ] Android Chrome and iPhone Safari: swiping sideways does not stop the page scrolling up and down.
 - [ ] Laptop: mouse drag and arrow keys both work.
 - [ ] Chapters admin page shows the thumbnails against the right rows.
