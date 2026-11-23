@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name:       HUB — How to Say It in English
- * Description:       Mobile-first reader hub for the "How to Say It in English" mind-map books: mind maps, TBT Fill games, revision exercises and keys, unlocked with a book code.
+ * Description:       Mobile-first reader hub for the "How to Say It in English" mind-map books: mind maps, The Chase games, revision exercises and keys, unlocked with a book code.
  * Version:           0.9.2
  * Requires at least: 6.0
  * Requires PHP:      7.4

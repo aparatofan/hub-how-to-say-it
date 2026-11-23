@@ -406,8 +406,8 @@ class HTSI_Admin {
 		printf( '<tr><th><label for="htsi-title">Chapter title</label></th><td><input id="htsi-title" type="text" name="title" class="large-text" value="%s"></td></tr>', esc_attr( $ch['title'] ) );
 		printf( '<tr><th><label for="htsi-map">Mindomo link</label></th><td><input id="htsi-map" type="url" name="map_url" class="large-text" value="%s" placeholder="https://www.mindomo.com/mindmap/…"><p class="description">The public link that opens without a Mindomo login.</p></td></tr>', esc_attr( $ch['map_url'] ) );
 
-		echo '<tr><th>Branches and Fill games</th><td><p class="description">One row per branch, in map order. Leave the Fill link empty until the game is ready — the reader sees “Soon”. Empty rows are ignored.</p>';
-		echo '<p class="description">Pictures come from the Media Library. Name each file v1ch1b1, v1ch1b2 … (volume, chapter, branch), in map order.</p><table><thead><tr><th style="padding:4px 10px 4px 0"></th><th style="padding:4px 10px 4px 0">Branch title</th><th style="padding:4px 10px 4px 0">Fill link</th><th style="padding:4px 10px 4px 0">Picture</th></tr></thead><tbody>';
+		echo '<tr><th>Branches and The Chase games</th><td><p class="description">One row per branch, in map order. Leave The Chase link empty until the game is ready — the reader sees “Soon”. Empty rows are ignored.</p>';
+		echo '<p class="description">Pictures come from the Media Library. Name each file v1ch1b1, v1ch1b2 … (volume, chapter, branch), in map order.</p><table><thead><tr><th style="padding:4px 10px 4px 0"></th><th style="padding:4px 10px 4px 0">Branch title</th><th style="padding:4px 10px 4px 0">The Chase link</th><th style="padding:4px 10px 4px 0">Picture</th></tr></thead><tbody>';
 		$branches = array_values( $ch['branches'] );
 		$pics     = HTSI_Content::picture_ids( $v, $c );
 		$rows     = max( 8, count( $branches ) + 2, $pics ? max( array_keys( $pics ) ) : 0 );
@@ -425,7 +425,7 @@ class HTSI_Admin {
 				}
 			}
 			printf(
-				'<tr><td>%d</td><td><input type="text" name="branch_title[]" value="%s" placeholder="Branch title" style="width:280px" aria-label="Branch %d title"></td><td><input type="url" name="branch_fill[]" value="%s" placeholder="TBT Fill link" style="width:420px" aria-label="Branch %d Fill link"></td><td>%s</td></tr>',
+				'<tr><td>%d</td><td><input type="text" name="branch_title[]" value="%s" placeholder="Branch title" style="width:280px" aria-label="Branch %d title"></td><td><input type="url" name="branch_fill[]" value="%s" placeholder="The Chase link" style="width:420px" aria-label="Branch %d The Chase link"></td><td>%s</td></tr>',
 				$i + 1,
 				esc_attr( $b['title'] ),
 				$i + 1,
