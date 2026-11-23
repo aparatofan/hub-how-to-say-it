@@ -895,7 +895,7 @@
     }
     var html = section(k, 1, 'map', 'Access the mind map', 'All the phrases, with audio and examples', inner);
 
-    // 2. Fill games
+    // 2. The Chase games
     if (ch.branches && ch.branches.length) {
       inner = '<div class="htsi-list">' + ch.branches.map(function (b, i) {
         var url = safeUrl(b.fill_url);
@@ -907,7 +907,7 @@
     } else {
       inner = '<div class="htsi-empty">The games for this chapter are not ready yet. Please come back soon.</div>';
     }
-    html += section(k, 2, 'games', 'Play Fill', 'Build each phrase before your time runs out', inner);
+    html += section(k, 2, 'games', 'Play The Chase', 'Build each phrase before your time runs out', inner);
 
     // 3. exercises, 4. key
     function exRows(path) {
