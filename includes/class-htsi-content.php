@@ -1,6 +1,6 @@
 <?php
 /**
- * Chapter content: mind-map link, Fill games per branch, exercises.
+ * Chapter content: mind-map link, The Chase games per branch, exercises.
  * Saved content lives in the "htsi_content" option and is laid over the
  * seed in data/seed.php, so a fresh install already shows Volume 1.
  */

@@ -89,7 +89,7 @@ The HUB redraws the whole screen when a toggle opens or closes. Without care, th
 
 ## Admin (Chapters page)
 
-- The "Branches and Fill games" table gets a third column, **Picture**: a small thumbnail (about 96px wide) when the plugin has found a file for that row, otherwise a grey "No picture".
+- The "Branches and The Chase games" table gets a third column, **Picture**: a small thumbnail (about 96px wide) when the plugin has found a file for that row, otherwise a grey "No picture".
 - One line of help above the table: *Pictures come from the Media Library. Name each file v1ch1b1, v1ch1b2 … (volume, chapter, branch), in map order.*
 - Nothing to type and nothing new to save. The column is only a check.
 
